@@ -1,4 +1,3 @@
-from .mqp_resources import get_coupling_map, get_target
 from .job import MQPJob
 from pennylane import QuantumTape
 from pennylane_qasm import to_openqasm
