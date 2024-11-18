@@ -10,6 +10,7 @@ requires-python = ">=3.11"
 dependencies = [
     "mqp-client>=0.1.4",
     "pennylane>=0.39.0",
+    "pytest>=8.3.3",
     "requests>=2.32.3",
 ]
 [tool.uv]
@@ -20,3 +21,9 @@ package = true
 name = "lrz"
 # Required URL for the index.
 url = "https://pypi.quantum.lrz.de"
+
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["test"]  # Specify the directory containing test files
+addopts = "--verbose"  # Add verbosity to the test output
