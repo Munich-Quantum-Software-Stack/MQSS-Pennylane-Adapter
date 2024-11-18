@@ -1,0 +1,22 @@
+[project]
+name = "pennylane-provider"
+version = "0.1.0"
+description = "A Pennylane provider package for the Munich Quantum Portal."
+authors = [
+    { name = "Burak", email = "burak.mete@lrz.de" }
+]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "mqp-client>=0.1.4",
+    "pennylane>=0.39.0",
+    "requests>=2.32.3",
+]
+[tool.uv]
+package = true
+
+[[tool.uv.index]]
+# Optional name for the index.
+name = "lrz"
+# Required URL for the index.
+url = "https://pypi.quantum.lrz.de"
