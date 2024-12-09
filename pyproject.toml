@@ -11,6 +11,7 @@ dependencies = [
     "mqp-client>=0.1.4",
     "pennylane>=0.39.0",
     "pytest>=8.3.3",
+    "qiskit>=1.2.4",
     "requests>=2.32.3",
 ]
 [tool.uv]
@@ -27,3 +28,6 @@ url = "https://pypi.quantum.lrz.de"
 pythonpath = ["src"]
 testpaths = ["test"]  # Specify the directory containing test files
 addopts = "--verbose"  # Add verbosity to the test output
+
+[scripts]
+test = "pytest"
