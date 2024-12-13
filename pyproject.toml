@@ -8,11 +8,12 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "mqp-client>=0.1.4",
     "pennylane>=0.39.0",
     "pytest>=8.3.3",
+    "python-dotenv>=1.0.1",
     "qiskit>=1.2.4",
     "requests>=2.32.3",
+    "mqp-client==0.1.4",
 ]
 [tool.uv]
 package = true

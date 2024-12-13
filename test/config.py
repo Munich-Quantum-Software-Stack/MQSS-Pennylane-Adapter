@@ -1,4 +1,11 @@
 import os
+from os.path import join, dirname
+from dotenv import load_dotenv
+
+
+dotenv_path = join(os.getcwd(), ".env")
+print(dotenv_path)
+load_dotenv(dotenv_path)
 
 TEST_API_TOKEN = os.getenv("TEST_API_TOKEN")
 
