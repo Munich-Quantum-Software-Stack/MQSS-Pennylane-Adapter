@@ -3,35 +3,10 @@ import pennylane as qml
 import pytest
 from .config import *
 from src.mqp.pennylane_provider.device import LRZDevice
+from pennylane import numpy as np
 
-
-# tests should start with test_
-# def test_
-@pytest.mark.parametrize("params", [[1, 2]])
-def test_simulate(params):
-    result = my_quantum_function(1, 2)
-    print(result)
-
-    assert type(result) == float
-
-
-# @pytest.mark.parametrize("params", [[1, 2]])
-# def test_dummy(params):
-
-#     assert len(params) != 0
-
-#     qc = my_quantum_function(1, 2)
-
-#     job = backend.run(qc, shots=1024)
-
-#     assert False
-
-
-# TODO1: Dynamically get number of wires
-# DONE TODO2: Dynamically set the custom device (LRZ-backend)
-
-dev = LRZDevice()
-dev_simulator = qml.device("default.qubit", wires=5)
+dev = LRZDevice(wires=2)
+dev_simulator = qml.device("default.qubit", wires=2)
 
 
 @qml.qnode(dev)
@@ -52,7 +27,9 @@ def my_quantum_function(x, y):
     qml.RZ(x, wires=0)
     qml.CNOT(wires=[0, 1])
     qml.RY(y, wires=1)
-    return qml.expval(qml.PauliZ(1))
+    qml.CNOT(wires=[1, 0])
+    qml.RX(x, wires=1)
+    return qml.expval(qml.PauliX(0) @ qml.PauliZ(1))
     # return qml.probs(range(0, 2))
 
 
@@ -74,20 +51,17 @@ def my_quantum_function_simulator(x, y):
     qml.RZ(x, wires=0)
     qml.CNOT(wires=[0, 1])
     qml.RY(y, wires=1)
+    qml.CNOT(wires=[1, 0])
+    qml.RX(x, wires=1)
+    return qml.expval(qml.PauliX(0) @ qml.PauliZ(1))
     # return qml.expval(qml.PauliZ(1))
-    return qml.probs(range(0, 2))
+    # return qml.probs(range(0, 2))
 
 
-def convert_counts_json_to_array(counts):
-    """Given counts object as a json, convert it to a list of floats
-
-    Args:
-        counts (list[float]): Counts(z-axis) from the QC
-    """
-    pass
-
-
-def compare_runs(counts, probs, method="hellinger"):
+@pytest.mark.parametrize(
+    "params", [[np.pi / 3, np.pi / 17], [np.pi * 13 / 12, np.pi / 8]]
+)
+def test_compare_runs(params, method="hellinger"):
     """Compare the runs done on LRZ backend with ideal simulations in d
 
     Args:
@@ -97,4 +71,6 @@ def compare_runs(counts, probs, method="hellinger"):
             'hellinger': Hellinger distance
             'fidelity': Exact fidelity calculation, requires state tomography from QC
     """
-    pass
+    result = my_quantum_function(*params)
+    result_simulator = my_quantum_function_simulator(*params)
+    assert abs(result - result_simulator) <= 1e-1
