@@ -2,7 +2,11 @@
 
 This projects implements a custom Pennylane backend called LRZDevice, which is able to send quantum jobs to LRZ's infrastructure using the pennylane frontend. The users would be able to use all full-fletched pennylane functions (optimization, QML etc.) while running their jobs on LRZ's quantum hardware.
 
-
+## Running the unit tests
+```
+uv run test
+```
+is configured to run the pytest suite, fetching all the test cases that star with 'test_'. 
 ## Code Snippet
 
 ```
