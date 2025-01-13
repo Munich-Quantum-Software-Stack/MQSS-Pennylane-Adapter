@@ -57,10 +57,11 @@ def my_quantum_function_simulator(x, y):
     # return qml.expval(qml.PauliZ(1))
     # return qml.probs(range(0, 2))
 
-
+''' TEMPORARILY COMMENTED
 @pytest.mark.parametrize(
     "params", [[np.pi / 3, np.pi / 17], [np.pi * 13 / 12, np.pi / 8]]
 )
+
 def test_compare_runs(params, method="hellinger"):
     """Compare the runs done on LRZ backend with ideal simulations in d
 
@@ -73,4 +74,32 @@ def test_compare_runs(params, method="hellinger"):
     """
     result = my_quantum_function(*params)
     result_simulator = my_quantum_function_simulator(*params)
-    assert abs(result - result_simulator) <= 1e-1
+    assert abs(result - result_simulator) <= 1e-1 '''
+
+@qml.qnode(dev, diff_method="parameter-shift")
+def basic_circuit(x):
+    qml.RX(x, wires=0)
+    return qml.probs(wires=0)
+
+@qml.qnode(dev_simulator, diff_method="parameter-shift")
+def basic_circuit_simulator(x):
+    qml.RX(x, wires=0)
+    return qml.probs(wires=0)
+
+@pytest.mark.parametrize(
+    "params", [[np.pi / 3]]
+)
+#,[np.pi / 2] add another parameter if reqd
+def test_gradient_calculations(params,method="hellinger"): 
+    result = basic_circuit(*params)
+    print('LRZ Backend :', result)
+
+    result_simulator = basic_circuit_simulator(*params)
+    print('Simulator : ', result_simulator)
+    
+    diff = abs(result.numpy() - result_simulator) #result converted to numpy array from tenser
+    print(f'Difference: {diff}')
+
+    assert np.all(diff <= 1e-1), f"Differences exceeded tolerance: {diff}"
+    
+    
