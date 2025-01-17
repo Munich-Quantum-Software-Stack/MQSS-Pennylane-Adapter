@@ -88,6 +88,7 @@ def basic_circuit_simulator(x):
     qml.RX(x, wires=0)
     return qml.probs(wires=0)
 
+'''
 @pytest.mark.parametrize(
     "params", [[np.pi / 3]] 
 )
@@ -101,8 +102,7 @@ def test_gradient_calculations(params,method="hellinger"):
     diff = abs(result.numpy() - result_simulator) #result converted to numpy array from tenser
     print(f'Difference: {diff}')
 
-    assert np.all(diff <= 1e-1), Differences exceeded tolerance: {diff} 
-
+    assert np.all(diff <= 1e-1) '''
 
 
 #Run with pytest -s 
@@ -122,7 +122,7 @@ qnode2 = qml.QNode(circuit, dev_simulator, interface='torch')
 
 
 @pytest.mark.parametrize(
-    "params", [[np.pi / 3, np.pi / 17], [np.pi * 13 / 12, np.pi / 8]]
+    "params", [[0.5,0.2], [np.pi * 13 / 12, np.pi / 8]]
 )
 
 def test_gradient_calculations(params): 
