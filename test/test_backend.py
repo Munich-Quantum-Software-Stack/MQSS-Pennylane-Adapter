@@ -76,6 +76,8 @@ def test_compare_runs(params, method="hellinger"):
     result_simulator = my_quantum_function_simulator(*params)
     assert abs(result - result_simulator) <= 1e-1 '''
 
+
+
 @qml.qnode(dev, diff_method="parameter-shift")
 def basic_circuit(x):
     qml.RX(x, wires=0)
@@ -87,11 +89,10 @@ def basic_circuit_simulator(x):
     return qml.probs(wires=0)
 
 @pytest.mark.parametrize(
-    "params", [[np.pi / 3]]
+    "params", [[np.pi / 3]] 
 )
-#,[np.pi / 2] add another parameter if reqd
 def test_gradient_calculations(params,method="hellinger"): 
-    result = basic_circuit(*params)
+    result = np.square(basic_circuit(*params)) #LRZ returns the phases that needs to be squared
     print('LRZ Backend :', result)
 
     result_simulator = basic_circuit_simulator(*params)
@@ -100,6 +101,43 @@ def test_gradient_calculations(params,method="hellinger"):
     diff = abs(result.numpy() - result_simulator) #result converted to numpy array from tenser
     print(f'Difference: {diff}')
 
-    assert np.all(diff <= 1e-1), f"Differences exceeded tolerance: {diff}"
+    assert np.all(diff <= 1e-1), Differences exceeded tolerance: {diff} 
+
+
+
+#Run with pytest -s 
+# Pytorch and tenserflow
+import torch
+
+def circuit(x,y):
+    qml.RZ(x, wires=0)
+    qml.CNOT(wires=[0, 1])
+    qml.RY(y, wires=1)
+    qml.CNOT(wires=[1, 0])
+    qml.RX(x, wires=1)
+    return qml.expval(qml.PauliX(0) @ qml.PauliZ(1))
+
+qnode1 = qml.QNode(circuit, dev, interface='torch')
+qnode2 = qml.QNode(circuit, dev_simulator, interface='torch')
+
+
+@pytest.mark.parametrize(
+    "params", [[np.pi / 3, np.pi / 17], [np.pi * 13 / 12, np.pi / 8]]
+)
+
+def test_gradient_calculations(params): 
+    result = qnode1(*params) 
+    print('LRZ Backend for pytorch :', result)
+
+    result_simulator = qnode2(*params)
+    print('Simulator results for pytorch : ', result_simulator)
     
-    
+'''
+RESULTS:
+
+LRZ Backend for pytorch : tensor(-0.0006, dtype=torch.float64)
+Simulator results for pytorch :  tensor(0., dtype=torch.float64)
+
+
+LRZ Backend for pytorch : tensor(-0.0015, dtype=torch.float64)
+Simulator results for pytorch :  tensor(-1.1102e-16, dtype=torch.float64) '''
