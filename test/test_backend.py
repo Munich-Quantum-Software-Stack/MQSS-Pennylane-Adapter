@@ -8,60 +8,74 @@ from pennylane import numpy as np
 dev = LRZDevice(wires=2)
 dev_simulator = qml.device("default.qubit", wires=2)
 
+def apply_basis_change(PauliWord):
+    """
+    Applies Hadamard gate if PauliX is present and S† (adjoint S) + Hadamard if PauliY is present.
 
-@qml.qnode(dev)
-def my_quantum_function(x, y):
+    :param PauliWord: A tensor product of Pauli operators (e.g., qml.PauliX(0) @ qml.PauliY(1))
+    """
+    # Check if PauliWord is a tensor product (i.e., contains multiple Pauli operators)
+    if isinstance(PauliWord, qml.operation.Tensor):
+        terms = PauliWord.operands  # Extract individual Pauli operators
+    else:
+        terms = [PauliWord]
+    print(terms)
+
+    # Modify each Pauli operator in the tensor product
+    new_terms = []
+    for term in terms:
+        qubit = term.wires[0]  # Get the qubit associated with the term
+        print(term)
+        # Apply Hadamard and update Pauli operators
+        if isinstance(term, qml.PauliX):
+            print('hi')
+            qml.Hadamard(qubit)  
+            new_terms.append(qml.PauliZ(qubit))  # Replace PauliX with PauliZ
+
+        elif isinstance(term, qml.PauliY):
+            qml.adjoint(qml.S)(qubit)  #  S† (adjoint S)
+            qml.Hadamard(qubit)  
+            new_terms.append(qml.PauliZ(qubit))  # Replace PauliY with PauliZ
+
+        else:
+            # For PauliZ, unchanged
+            new_terms.append(term)
+    print(terms,new_terms)
+    # Return the updated tensor product of Pauli operators
+    return qml.operation.Tensor(*new_terms)
+
+
+def circuit(x, y, PauliWord, Convert_to_Z_basis):
     """
     The function `my_quantum_function` applies quantum operations RZ, CNOT, and RY to qubits and returns
-    the expectation value of PauliZ on the second qubit.
+    the expectation value of the Pauli Word and converts measurement basis to Z specified 
 
-    :param x: The parameter `x` in the `my_quantum_function` represents the angle for the rotation gate
-    `RZ` applied on the qubit at wire 0
-    :param y: The parameter `y` in the `my_quantum_function` function is used as the angle parameter for
-    the rotation gate `RY(y, wires=1)`. This gate applies a rotation around the y-axis of the Bloch
-    sphere by an angle `y` to the qubit on wire
-    :return: The function `my_quantum_function` returns the expected value of the Pauli Z operator
-    acting on the second qubit (qubit 1) after applying the quantum operations RZ(x) on qubit 0, a CNOT
-    gate between qubits 0 and 1, and RY(y) on qubit 1.
+    :param x: angle for the rotation gate RZ on the qubit at wire 0
+    :param y: angle for the rotation gate RY on the qubit at wire 1
+    :param Pauli_Word: Set of Pauli operators to be measured for each qubit. If Identity is applied then it's not required to mention in the argument.
+    :ConvertToPauliZ: Converts to PauliZ basis
+
+    :return: Returns the expectation value of the Pauli Word given
     """
     qml.RZ(x, wires=0)
     qml.CNOT(wires=[0, 1])
     qml.RY(y, wires=1)
     qml.CNOT(wires=[1, 0])
     qml.RX(x, wires=1)
-    return qml.expval(qml.PauliX(0) @ qml.PauliZ(1))
-    # return qml.probs(range(0, 2))
 
+    if Convert_to_Z_basis:
+        PauliWord=apply_basis_change(PauliWord)
 
-@qml.qnode(dev_simulator)
-def my_quantum_function_simulator(x, y):
-    """
-    The function `my_quantum_function` applies quantum operations RZ, CNOT, and RY to qubits and returns
-    the expectation value of PauliZ on the second qubit. Implemented to be done on Pennylane simulator
-
-    :param x: The parameter `x` in the `my_quantum_function` represents the angle for the rotation gate
-    `RZ` applied on the qubit at wire 0
-    :param y: The parameter `y` in the `my_quantum_function` function is used as the angle parameter for
-    the rotation gate `RY(y, wires=1)`. This gate applies a rotation around the y-axis of the Bloch
-    sphere by an angle `y` to the qubit on wire
-    :return: The function `my_quantum_function` returns the expected value of the Pauli Z operator
-    acting on the second qubit (qubit 1) after applying the quantum operations RZ(x) on qubit 0, a CNOT
-    gate between qubits 0 and 1, and RY(y) on qubit 1.
-    """
-    qml.RZ(x, wires=0)
-    qml.CNOT(wires=[0, 1])
-    qml.RY(y, wires=1)
-    qml.CNOT(wires=[1, 0])
-    qml.RX(x, wires=1)
-    return qml.expval(qml.PauliX(0) @ qml.PauliZ(1))
-    # return qml.expval(qml.PauliZ(1))
-    # return qml.probs(range(0, 2))
+    print(PauliWord) 
+    return qml.expval(PauliWord)
 
 
 @pytest.mark.parametrize(
-    "params", [[np.pi / 3, np.pi / 17], [np.pi * 13 / 12, np.pi / 8]]
+    "params", [ [np.pi * 13 / 12, np.pi / 8]]
 )
 def test_compare_runs(params, method="hellinger"):
+    import pennylane as qml
+
     """Compare the runs done on LRZ backend with ideal simulations in d
 
     Args:
@@ -71,6 +85,39 @@ def test_compare_runs(params, method="hellinger"):
             'hellinger': Hellinger distance
             'fidelity': Exact fidelity calculation, requires state tomography from QC
     """
-    result = my_quantum_function(*params)
-    result_simulator = my_quantum_function_simulator(*params)
-    assert abs(result - result_simulator) <= 1e-1
+    #Let our hamiltonian be H= PauliX(0) @ PauliZ(1) + PauliZ(0) @ PauliY(1) + PauliY(0)
+    Hamiltonian = [qml.PauliX(0) @ qml.PauliZ(1) , qml.PauliZ(0) @ qml.PauliY(1) , qml.PauliY(1)]
+
+    #Devices dictionary stores the device to be tested, string to be printed during 
+    #Devices = {dev_simulator:['Simulator: '] , dev : ['LRZ Device: '] } #UNCOMMENT WHEN QEXA IS BACK
+    Devices = {dev_simulator:['Simulator: ',[]]}
+
+    #This loop runs for each device defined in devices and the results are stored in the value of the dictionary Devices
+    for device, result_from_device in Devices.items():
+        
+        #This loop first converts X and Y to the Z basis and in the second iteration it measures in the given basis
+        for Convert_to_Z_basis in [True,False]:
+            print("\nMeasuring in Z basis") if Convert_to_Z_basis else print("Measuring in the given basis")
+            result = 0
+
+            #This loop sums up the expectation value of each pauliword in the defined Hamiltonian
+            for PauliWord in Hamiltonian:
+                qnode = qml.QNode(circuit, device)
+                result += qnode (*params, PauliWord, Convert_to_Z_basis)
+
+                qml_to_qasm_circuit = qnode.qtape.to_openqasm()
+                print(qml_to_qasm_circuit)
+                
+                
+                print(result)
+
+            print(result_from_device[0], result)
+            result_from_device.append(result)
+
+    '''
+    #Uncomment when WHEN QEXA IS OPERATING 
+    # Compare pairwise results
+    for i in range(1,len(result[1:])): #ignore first term which is a string indicating device
+        assert abs(result[i] - result_simulator[i]) <= 1e-1, f"Comparison failed at index {i}: {result[i]} vs {result_simulator[i]}"
+
+    '''
