@@ -46,7 +46,8 @@ class LRZDevice(Device):
     ) -> TensorLike:
 
         provider = MQPProvider(token=TEST_API_TOKEN, url=TEST_API_URL)
-        backend = provider.get_backend(TEST_API_BACKENDS)
+        #backend = provider.get_backend(TEST_API_BACKENDS)
+        backend = provider.get_backend('QLM')
 
         # TODO: Add asserts to qasm
         for tape in circuits:
@@ -59,8 +60,8 @@ class LRZDevice(Device):
         #     job = backend.run(circuits)
         # else:
         #     job = [backend.run(c) for c in circuits]
-        if type(circuits[0].measurements[0]).__name__ == "ExpectationMP":
-            circuits = self.append_measurement_gates(circuits)
+        #if type(circuits[0].measurements[0]).__name__ == "ExpectationMP": if it's H then call fn that sends multiple circuits
+        #    circuits = self.append_measurement_gates(circuits)
         job = backend.run(circuits, shots=shots)
 
         result = job.result()

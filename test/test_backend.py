@@ -14,35 +14,22 @@ def apply_basis_change(PauliWord):
 
     :param PauliWord: A tensor product of Pauli operators (e.g., qml.PauliX(0) @ qml.PauliY(1))
     """
-    # Check if PauliWord is a tensor product (i.e., contains multiple Pauli operators)
-    if isinstance(PauliWord, qml.operation.Tensor):
-        terms = PauliWord.operands  # Extract individual Pauli operators
-    else:
-        terms = [PauliWord]
-    print(terms)
-
     # Modify each Pauli operator in the tensor product
     new_terms = []
-    for term in terms:
-        qubit = term.wires[0]  # Get the qubit associated with the term
-        print(term)
-        # Apply Hadamard and update Pauli operators
-        if isinstance(term, qml.PauliX):
-            print('hi')
-            qml.Hadamard(qubit)  
-            new_terms.append(qml.PauliZ(qubit))  # Replace PauliX with PauliZ
+    for operator in PauliWord:
+        qubit = operator.wires[0]
 
-        elif isinstance(term, qml.PauliY):
+        if isinstance(operator, qml.PauliX): 
+            qml.Hadamard(qubit)  
+
+        if isinstance(operator, qml.PauliY):
             qml.adjoint(qml.S)(qubit)  #  S† (adjoint S)
             qml.Hadamard(qubit)  
-            new_terms.append(qml.PauliZ(qubit))  # Replace PauliY with PauliZ
 
-        else:
-            # For PauliZ, unchanged
-            new_terms.append(term)
-    print(terms,new_terms)
+        new_terms.append(qml.PauliZ(qubit))
+
     # Return the updated tensor product of Pauli operators
-    return qml.operation.Tensor(*new_terms)
+    return qml.prod(*new_terms)
 
 
 def circuit(x, y, PauliWord, Convert_to_Z_basis):
@@ -87,16 +74,16 @@ def test_compare_runs(params, method="hellinger"):
     """
     #Let our hamiltonian be H= PauliX(0) @ PauliZ(1) + PauliZ(0) @ PauliY(1) + PauliY(0)
     Hamiltonian = [qml.PauliX(0) @ qml.PauliZ(1) , qml.PauliZ(0) @ qml.PauliY(1) , qml.PauliY(1)]
-
+    #Hamiltonian = [qml.PauliY(1)@qml.PauliZ(0)]
     #Devices dictionary stores the device to be tested, string to be printed during 
-    #Devices = {dev_simulator:['Simulator: '] , dev : ['LRZ Device: '] } #UNCOMMENT WHEN QEXA IS BACK
-    Devices = {dev_simulator:['Simulator: ',[]]}
+    Devices = { dev : ['LRZ Device: '] } #UNCOMMENT WHEN QEXA IS BACK
+    #Devices = {dev_simulator:['Simulator: ',[]]}
 
     #This loop runs for each device defined in devices and the results are stored in the value of the dictionary Devices
     for device, result_from_device in Devices.items():
         
         #This loop first converts X and Y to the Z basis and in the second iteration it measures in the given basis
-        for Convert_to_Z_basis in [True,False]:
+        for Convert_to_Z_basis in [True, False]:
             print("\nMeasuring in Z basis") if Convert_to_Z_basis else print("Measuring in the given basis")
             result = 0
 
@@ -107,9 +94,6 @@ def test_compare_runs(params, method="hellinger"):
 
                 qml_to_qasm_circuit = qnode.qtape.to_openqasm()
                 print(qml_to_qasm_circuit)
-                
-                
-                print(result)
 
             print(result_from_device[0], result)
             result_from_device.append(result)
@@ -121,3 +105,42 @@ def test_compare_runs(params, method="hellinger"):
         assert abs(result[i] - result_simulator[i]) <= 1e-1, f"Comparison failed at index {i}: {result[i]} vs {result_simulator[i]}"
 
     '''
+'''
+RESULTS: inspect qasm circuit
+Measuring in Z basis
+Z(1) @ Z(0)
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+creg c[2];
+rz(3.4033920413889427) q[0];
+cx q[0],q[1];
+ry(0.39269908169872414) q[1];
+cx q[1],q[0];
+rx(3.4033920413889427) q[1];
+sdg q[1];
+h q[1];
+measure q[0] -> c[0];
+measure q[1] -> c[1];
+
+Simulator:  0.25881904510252063
+Measuring in the given basis
+Y(1) @ Z(0)
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+creg c[2];
+rz(3.4033920413889427) q[0];
+cx q[0],q[1];
+ry(0.39269908169872414) q[1];
+cx q[1],q[0];
+rx(3.4033920413889427) q[1];
+z q[1];
+s q[1];
+h q[1];
+measure q[0] -> c[0];
+measure q[1] -> c[1];
+
+Simulator:  0.25881904510252063
+PASSED
+'''
