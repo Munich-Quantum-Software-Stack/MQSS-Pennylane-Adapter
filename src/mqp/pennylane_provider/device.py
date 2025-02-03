@@ -41,13 +41,13 @@ class LRZDevice(Device):
     def execute(
         self,
         circuits: QuantumScriptOrBatch,
-        execution_config: "ExecutionConfig" = DefaultExecutionConfig,
+        execution_config: "ExecutionConfig" = DefaultExecutionConfig, # type: ignore
         shots=1024,
     ) -> TensorLike:
 
         provider = MQPProvider(token=TEST_API_TOKEN, url=TEST_API_URL)
         #backend = provider.get_backend(TEST_API_BACKENDS)
-        backend = provider.get_backend('QLM')
+        backend = provider.get_backend('Q20')
 
         # TODO: Add asserts to qasm
         for tape in circuits:
@@ -60,7 +60,7 @@ class LRZDevice(Device):
         #     job = backend.run(circuits)
         # else:
         #     job = [backend.run(c) for c in circuits]
-        #if type(circuits[0].measurements[0]).__name__ == "ExpectationMP": if it's H then call fn that sends multiple circuits
+        #if type(circuits[0].measurements[0]).__name__ == "ExpectationMP": #if it's H then call fn that sends multiple circuits
         #    circuits = self.append_measurement_gates(circuits)
         job = backend.run(circuits, shots=shots)
 
@@ -95,9 +95,19 @@ class LRZDevice(Device):
         if type(circuits[0].measurements[0]).__name__ == "ProbabilityMP":
             return [np.sqrt(counts[0] / shots)]
         elif type(circuits[0].measurements[0]).__name__ == "ExpectationMP":
-            measured_qubits = [
-                op.wires.labels[0] for op in circuits[0]._measurements[0].obs
-            ]
+            print(1,circuits[0])
+            print(2,circuits[0]._measurements[0])
+            print(3,circuits[0]._measurements[0].obs)
+
+            obs = circuits[0]._measurements[0].obs
+
+            # If obs is a single Pauli operator, wrap it in a list
+            if isinstance(obs, (qml.PauliX, qml.PauliY, qml.PauliZ)):
+                print('hi')
+                obs = [obs]
+
+            measured_qubits = [op.wires.labels[0] for op in obs]
+
             expectation = 0.0
             for idx, value in enumerate(counts[0]):
                 try:
@@ -128,7 +138,16 @@ class LRZDevice(Device):
         Returns:
             QuantumScriptOrBatch: Pennylane circuit
         """
-        for op in circuits[0]._measurements[0].obs:
+        new_terms = []
+
+        obs = circuits[0]._measurements[0].obs
+
+        # If obs is a single Pauli operator, wrap it in a list
+        if isinstance(obs, (qml.PauliX, qml.PauliY, qml.PauliZ)):
+            print('hi')
+            obs = [obs]
+    
+        for op in obs:
             qubit = op.wires.labels[0]
             basis = op.basis
             if basis == "X":
@@ -139,7 +158,8 @@ class LRZDevice(Device):
                 hadamard = qml.H(qubit)
                 circuits[0]._ops.append(sdg)
                 circuits[0]._ops.append(hadamard)
-        return circuits
+            new_terms.append(qml.PauliZ(qubit))
+        return circuits #, qml.prod(*new_terms) # Return the updated tensor product of Pauli operators 
 
     def fetch_counts(
         self, result: Union[Result, ResultBatch], shots: int

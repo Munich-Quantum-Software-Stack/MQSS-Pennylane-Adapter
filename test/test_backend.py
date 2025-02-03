@@ -16,10 +16,17 @@ def apply_basis_change(PauliWord):
     """
     # Modify each Pauli operator in the tensor product
     new_terms = []
-    for operator in PauliWord:
+    if isinstance(PauliWord, qml.ops.Prod): 
+        operators = PauliWord.operands
+    else:
+        operators = [PauliWord]  # Single Pauli operator case
+
+    for operator in operators:
+        print(operator)
         qubit = operator.wires[0]
 
         if isinstance(operator, qml.PauliX): 
+            print('hi')
             qml.Hadamard(qubit)  
 
         if isinstance(operator, qml.PauliY):
@@ -50,8 +57,7 @@ def circuit(x, y, PauliWord, Convert_to_Z_basis):
     qml.CNOT(wires=[1, 0])
     qml.RX(x, wires=1)
 
-    if Convert_to_Z_basis:
-        PauliWord=apply_basis_change(PauliWord)
+    if Convert_to_Z_basis: PauliWord = apply_basis_change(PauliWord)
 
     print(PauliWord) 
     return qml.expval(PauliWord)
@@ -72,18 +78,22 @@ def test_compare_runs(params, method="hellinger"):
             'hellinger': Hellinger distance
             'fidelity': Exact fidelity calculation, requires state tomography from QC
     """
-    #Let our hamiltonian be H= PauliX(0) @ PauliZ(1) + PauliZ(0) @ PauliY(1) + PauliY(0)
-    Hamiltonian = [qml.PauliX(0) @ qml.PauliZ(1) , qml.PauliZ(0) @ qml.PauliY(1) , qml.PauliY(1)]
-    #Hamiltonian = [qml.PauliY(1)@qml.PauliZ(0)]
+    #Let our hamiltonian be H = 0.5 * (PauliX(0) @ PauliZ(1)) + 2 * (PauliZ(0) @ PauliY(1)) + -3 * (PauliY(0))
+    
+    Hamiltonian = [qml.PauliX(0) @ qml.PauliZ(1) ,  qml.PauliY(1)] #qml.PauliZ(0) @ qml.PauliY(1) ,
+    Hamiltonian = [qml.PauliZ(0) @ qml.PauliZ(1) ,  qml.PauliZ(1)]
+    #Hamiltonian = 0.5 * (qml.PauliX(0) @ qml.PauliZ(1)) + 5 * (qml.PauliZ(0) @ qml.PauliY(1)) + -4 * (qml.PauliY(0)) 
+    Hamiltonian =[qml.PauliZ(0) @ qml.PauliZ(1)]
+    #Hamiltonian.terms() [np.float64(0.5), np.float64(2.0), np.float64(-3.0)] [X(0) @ Z(1), Z(0) @ Y(1), Y(0)]
+      
     #Devices dictionary stores the device to be tested, string to be printed during 
-    Devices = { dev : ['LRZ Device: '] } #UNCOMMENT WHEN QEXA IS BACK
-    #Devices = {dev_simulator:['Simulator: ',[]]}
+    Devices = { dev : ['LRZ Device: '] , dev_simulator:['Simulator: ',[]]} #dev : ['LRZ Device: '] ,
 
     #This loop runs for each device defined in devices and the results are stored in the value of the dictionary Devices
     for device, result_from_device in Devices.items():
         
         #This loop first converts X and Y to the Z basis and in the second iteration it measures in the given basis
-        for Convert_to_Z_basis in [True, False]:
+        for Convert_to_Z_basis in [False]:
             print("\nMeasuring in Z basis") if Convert_to_Z_basis else print("Measuring in the given basis")
             result = 0
 
@@ -144,3 +154,7 @@ measure q[1] -> c[1];
 Simulator:  0.25881904510252063
 PASSED
 '''
+
+'''
+Learnings:
+SProd: cant directly pass hailtoninan need to unwrap using terms() for real backend'''
