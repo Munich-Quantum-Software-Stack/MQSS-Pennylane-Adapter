@@ -1,45 +1,13 @@
 import pennylane as qml
-
 import pytest
 from .config import *
 from src.mqp.pennylane_provider.device import LRZDevice
 from pennylane import numpy as np
 
-dev = LRZDevice(wires=2)
-dev_simulator = qml.device("default.qubit", wires=2)
+dev = LRZDevice(wires=3)
+dev_simulator = qml.device("default.qubit", wires=3)
 
-def apply_basis_change(PauliWord):
-    """
-    Applies Hadamard gate if PauliX is present and S† (adjoint S) + Hadamard if PauliY is present.
-
-    :param PauliWord: A tensor product of Pauli operators (e.g., qml.PauliX(0) @ qml.PauliY(1))
-    """
-    # Modify each Pauli operator in the tensor product
-    new_terms = []
-    if isinstance(PauliWord, qml.ops.Prod): 
-        operators = PauliWord.operands
-    else:
-        operators = [PauliWord]  # Single Pauli operator case
-
-    for operator in operators:
-        print(operator)
-        qubit = operator.wires[0]
-
-        if isinstance(operator, qml.PauliX): 
-            print('hi')
-            qml.Hadamard(qubit)  
-
-        if isinstance(operator, qml.PauliY):
-            qml.adjoint(qml.S)(qubit)  #  S† (adjoint S)
-            qml.Hadamard(qubit)  
-
-        new_terms.append(qml.PauliZ(qubit))
-
-    # Return the updated tensor product of Pauli operators
-    return qml.prod(*new_terms)
-
-
-def circuit(x, y, PauliWord, Convert_to_Z_basis):
+def circuit(x, y, PauliWord):
     """
     The function `my_quantum_function` applies quantum operations RZ, CNOT, and RY to qubits and returns
     the expectation value of the Pauli Word and converts measurement basis to Z specified 
@@ -56,105 +24,49 @@ def circuit(x, y, PauliWord, Convert_to_Z_basis):
     qml.RY(y, wires=1)
     qml.CNOT(wires=[1, 0])
     qml.RX(x, wires=1)
-
-    if Convert_to_Z_basis: PauliWord = apply_basis_change(PauliWord)
-
-    print(PauliWord) 
+    qml.RX(y, wires=2)
+    qml.CNOT(wires=[1, 2])
     return qml.expval(PauliWord)
 
-
 @pytest.mark.parametrize(
-    "params", [ [np.pi * 13 / 12, np.pi / 8]]
+    "params", [ [np.pi * 13 / 12, np.pi / 8]]  
 )
-def test_compare_runs(params, method="hellinger"):
-    import pennylane as qml
 
-    """Compare the runs done on LRZ backend with ideal simulations in d
+def test_compare_expectation_values_Hamiltonians(params,method="hellinger"):
 
-    Args:
-        counts (list[float]): Counts(z-axis) from the QC
-        probs (list[float]): Probabily distribution from classical simulation
-        method (str):
-            'hellinger': Hellinger distance
-            'fidelity': Exact fidelity calculation, requires state tomography from QC
-    """
-    #Let our hamiltonian be H = 0.5 * (PauliX(0) @ PauliZ(1)) + 2 * (PauliZ(0) @ PauliY(1)) + -3 * (PauliY(0))
+    Devices = { dev_simulator:['Simulator: ',] , dev : ['LRZ Device: '] }
+
+    #Test simple Pauliword
+    Pauliword = qml.PauliY(1)@qml.PauliX(2)
+
+    # Test Sprod 
+    H1 = 5*qml.PauliZ(1)
+
+    #Test Hamiltonian as a simple sum
+    H2 = 0.5 * (qml.PauliX(1) @ qml.PauliZ(2)) + 5 * (qml.PauliZ(0) @ qml.PauliY(1)) + -4 * (qml.PauliY(2))
+
+    #Test pennylane Hamiltonian
+    coeffs = [0.2, -0.543]
+    obs = [qml.X(0) @ qml.Z(1), qml.Z(0) @ qml.Hadamard(2)]
+    H3 = qml.ops.LinearCombination(coeffs, obs)
+
+    Hamiltonians = [Pauliword,H1,H2,H3]
+
+    for Hamiltonian in Hamiltonians:
+        for device in Devices:
+            qnode = qml.QNode(circuit, device)
+            result = qnode (*params, Hamiltonian )
+            Devices[device].append(result)
+
+    success = True
+    tolerance = 15e-1
     
-    Hamiltonian = [qml.PauliX(0) @ qml.PauliZ(1) ,  qml.PauliY(1)] #qml.PauliZ(0) @ qml.PauliY(1) ,
-    Hamiltonian = [qml.PauliZ(0) @ qml.PauliZ(1) ,  qml.PauliZ(1)]
-    #Hamiltonian = 0.5 * (qml.PauliX(0) @ qml.PauliZ(1)) + 5 * (qml.PauliZ(0) @ qml.PauliY(1)) + -4 * (qml.PauliY(0)) 
-    Hamiltonian =[qml.PauliZ(0) @ qml.PauliZ(1)]
-    #Hamiltonian.terms() [np.float64(0.5), np.float64(2.0), np.float64(-3.0)] [X(0) @ Z(1), Z(0) @ Y(1), Y(0)]
-      
-    #Devices dictionary stores the device to be tested, string to be printed during 
-    Devices = { dev : ['LRZ Device: '] , dev_simulator:['Simulator: ',[]]} #dev : ['LRZ Device: '] ,
-
-    #This loop runs for each device defined in devices and the results are stored in the value of the dictionary Devices
-    for device, result_from_device in Devices.items():
-        
-        #This loop first converts X and Y to the Z basis and in the second iteration it measures in the given basis
-        for Convert_to_Z_basis in [False]:
-            print("\nMeasuring in Z basis") if Convert_to_Z_basis else print("Measuring in the given basis")
-            result = 0
-
-            #This loop sums up the expectation value of each pauliword in the defined Hamiltonian
-            for PauliWord in Hamiltonian:
-                qnode = qml.QNode(circuit, device)
-                result += qnode (*params, PauliWord, Convert_to_Z_basis)
-
-                qml_to_qasm_circuit = qnode.qtape.to_openqasm()
-                print(qml_to_qasm_circuit)
-
-            print(result_from_device[0], result)
-            result_from_device.append(result)
-
-    '''
-    #Uncomment when WHEN QEXA IS OPERATING 
-    # Compare pairwise results
-    for i in range(1,len(result[1:])): #ignore first term which is a string indicating device
-        assert abs(result[i] - result_simulator[i]) <= 1e-1, f"Comparison failed at index {i}: {result[i]} vs {result_simulator[i]}"
-
-    '''
-'''
-RESULTS: inspect qasm circuit
-Measuring in Z basis
-Z(1) @ Z(0)
-OPENQASM 2.0;
-include "qelib1.inc";
-qreg q[2];
-creg c[2];
-rz(3.4033920413889427) q[0];
-cx q[0],q[1];
-ry(0.39269908169872414) q[1];
-cx q[1],q[0];
-rx(3.4033920413889427) q[1];
-sdg q[1];
-h q[1];
-measure q[0] -> c[0];
-measure q[1] -> c[1];
-
-Simulator:  0.25881904510252063
-Measuring in the given basis
-Y(1) @ Z(0)
-OPENQASM 2.0;
-include "qelib1.inc";
-qreg q[2];
-creg c[2];
-rz(3.4033920413889427) q[0];
-cx q[0],q[1];
-ry(0.39269908169872414) q[1];
-cx q[1],q[0];
-rx(3.4033920413889427) q[1];
-z q[1];
-s q[1];
-h q[1];
-measure q[0] -> c[0];
-measure q[1] -> c[1];
-
-Simulator:  0.25881904510252063
-PASSED
-'''
-
-'''
-Learnings:
-SProd: cant directly pass hailtoninan need to unwrap using terms() for real backend'''
+    for i in range(1, len(Devices[dev][1:])+1):
+        diff = abs(Devices[dev][i] - Devices[dev_simulator][i])
+        print(f"{i}) {Hamiltonians[i-1]} \n LRZ device: {Devices[dev][i]} \n Simulator: {Devices[dev_simulator][i]}\n Difference: {diff}\n")
+        if diff > tolerance:
+            print(f"Comparison failed at index {i}: Difference {diff} exceeds tolerance.")
+            success = False
+    
+    # Assert that all comparisons were successful
+    assert success, "Comparison failed for some results!"
