@@ -1,3 +1,10 @@
+<a href="https://gitmoji.dev">
+  <img
+    src="https://img.shields.io/badge/gitmoji-%20😜%20😍-FFDD67.svg?style=flat-square"
+    alt="Gitmoji"
+  />
+</a>
+
 # pennylane-provider
 
 This projects implements a custom Pennylane backend called LRZDevice, which is able to send quantum jobs to LRZ's infrastructure using the pennylane frontend. The users would be able to use all full-fletched pennylane functions (optimization, QML etc.) while running their jobs on LRZ's quantum hardware.
