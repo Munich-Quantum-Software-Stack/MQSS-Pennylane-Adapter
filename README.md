@@ -7,7 +7,7 @@
 
 # pennylane-provider
 
-This projects implements a custom Pennylane backend called LRZDevice, which is able to send quantum jobs to LRZ's infrastructure using the pennylane frontend. The users would be able to use all full-fletched pennylane functions (optimization, QML etc.) while running their jobs on LRZ's quantum hardware.
+This projects implements a custom Pennylane backend called MQSSPennylaneDevice, which is able to send quantum jobs to LRZ's infrastructure using the pennylane frontend. The users would be able to use all full-fletched pennylane functions (optimization, QML etc.) while running their jobs on LRZ's quantum hardware.
 
 
 ## Code Snippet
@@ -15,9 +15,9 @@ This projects implements a custom Pennylane backend called LRZDevice, which is a
 ```
 import pennylane as qml
 from pennylane import numpy as np
-from src.mqp.pennylane_provider.device import LRZDevice
+from src.mqp.pennylane_provider.device import MQSSPennylaneDevice
 
-dev = LRZDevice(wires=2)
+dev = MQSSPennylaneDevice(wires=2)
 
 @qml.qnode(dev)
 def quantum_function_expval(x, y):

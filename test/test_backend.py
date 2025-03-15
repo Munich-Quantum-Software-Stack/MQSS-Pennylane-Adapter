@@ -2,12 +2,12 @@ import pennylane as qml
 
 import pytest
 from .config import *
-from src.mqp.pennylane_provider.device import LRZDevice
+from src.mqp.pennylane_provider.device import MQSSPennylaneDevice
 from pennylane import numpy as np
 
-dev = LRZDevice(wires=2)
+dev = MQSSPennylaneDevice(wires=2)
 dev_simulator = qml.device("default.qubit", wires=2)
-dev_hamiltonian = LRZDevice(wires=2)
+dev_hamiltonian = MQSSPennylaneDevice(wires=2)
 dev_hamiltonian_simulator = qml.device("default.qubit", wires=2)
 
 
