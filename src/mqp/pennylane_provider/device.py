@@ -1,10 +1,9 @@
 from pennylane.devices import Device, DefaultExecutionConfig
-from pennylane.tape import QuantumScript, QuantumScriptOrBatch
+from pennylane.tape import QuantumScriptOrBatch
 from pennylane.operation import Operator
 from pennylane import numpy as np
-import numpy.typing as npt
-from pennylane.typing import TensorLike, PostprocessingFn, Result, ResultBatch
-from typing import Optional, Union
+from pennylane.typing import TensorLike, Result, ResultBatch
+from typing import Union
 import pennylane as qml
 
 # The line `from .config import *` is importing all the variables and functions defined in the
@@ -47,11 +46,19 @@ class LRZDevice(Device):
 
         provider = MQPProvider(token=TEST_API_TOKEN, url=TEST_API_URL)
         backend = provider.get_backend(TEST_API_BACKENDS)
-
-        # TODO: Add asserts to qasm
+        print(
+            circuits[0].to_openqasm(rotations=False)
+        )  # provide rotations False to see what happens
         for tape in circuits:
             assert all(supports_operation(op) for op in tape.operations)
-            # pass
+
+        # Create a batch for a Hamiltonian calculation
+        if (tape.measurements[0]) is not None:
+            if len(tape.measurements[0].obs) > 1:
+                for obs in circuits[0]._measurements[0].obs:
+                    modified_circuit = self.append_measurement_gates(circuits[0], obs)
+                    pass
+
         job = None
 
         # Might not be required, batch jobs are handled in middleware level
@@ -59,8 +66,8 @@ class LRZDevice(Device):
         #     job = backend.run(circuits)
         # else:
         #     job = [backend.run(c) for c in circuits]
-        if type(circuits[0].measurements[0]).__name__ == "ExpectationMP":
-            circuits = self.append_measurement_gates(circuits)
+        # if type(circuits[0].measurements[0]).__name__ == "ExpectationMP":
+        #     circuits = self.append_measurement_gates(circuits)
         job = backend.run(circuits, shots=shots)
 
         result = job.result()
@@ -116,8 +123,7 @@ class LRZDevice(Device):
             return [expectation]
 
     def append_measurement_gates(
-        self,
-        circuits: QuantumScriptOrBatch,
+        self, circuits: QuantumScriptOrBatch, obs: qml.ops
     ) -> QuantumScriptOrBatch:
         """Append gates for basis change for measurements in non-Z basis.
 
@@ -127,7 +133,7 @@ class LRZDevice(Device):
         Returns:
             QuantumScriptOrBatch: Pennylane circuit
         """
-        for op in circuits[0]._measurements[0].obs:
+        for op in obs:
             qubit = op.wires.labels[0]
             basis = op.basis
             if basis == "X":
