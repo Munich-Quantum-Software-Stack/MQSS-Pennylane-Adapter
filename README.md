@@ -13,17 +13,17 @@ from src.mqp.pennylane_provider.device import LRZDevice
 dev = LRZDevice(wires=2)
 
 @qml.qnode(dev)
-def my_quantum_function(x, y):
+def quantum_function_expval(x, y):
     """
-    The function `my_quantum_function` applies quantum operations RZ, CNOT, and RY to qubits and returns
+    The function `quantum_function_expval` applies quantum operations RZ, CNOT, and RY to qubits and returns
     the expectation value of PauliZ on the second qubit.
 
-    :param x: The parameter `x` in the `my_quantum_function` represents the angle for the rotation gate
+    :param x: The parameter `x` in the `quantum_function_expval` represents the angle for the rotation gate
     `RZ` applied on the qubit at wire 0
-    :param y: The parameter `y` in the `my_quantum_function` function is used as the angle parameter for
+    :param y: The parameter `y` in the `quantum_function_expval` function is used as the angle parameter for
     the rotation gate `RY(y, wires=1)`. This gate applies a rotation around the y-axis of the Bloch
     sphere by an angle `y` to the qubit on wire
-    :return: The function `my_quantum_function` returns the expected value of the Pauli X operator acting on the first qubit (qubit 0) and Z operator
+    :return: The function `quantum_function_expval` returns the expected value of the Pauli X operator acting on the first qubit (qubit 0) and Z operator
     on the second qubit (qubit 1)
     gate between qubits 0 and 1, and RY(y) on qubit 1.
     """
@@ -37,5 +37,5 @@ def my_quantum_function(x, y):
 
 
 params = [np.pi / 3, np.pi / 17]
-result = my_quantum_function(*params)
+result = quantum_function_expval(*params)
 ```
