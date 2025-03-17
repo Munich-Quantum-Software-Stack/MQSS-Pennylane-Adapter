@@ -12,12 +12,12 @@ This projects implements a custom Pennylane backend called MQSSPennylaneDevice, 
 
 ## Code Snippet
 
-```
+```python
 import pennylane as qml
 from pennylane import numpy as np
 from src.mqp.pennylane_provider.device import MQSSPennylaneDevice
 
-dev = MQSSPennylaneDevice(wires=2)
+dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 
 @qml.qnode(dev)
 def quantum_function_expval(x, y):
