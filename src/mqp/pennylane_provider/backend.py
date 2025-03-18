@@ -1,20 +1,20 @@
 from .job import MQPJob
 from typing import List, Optional, Union
 from qiskit.transpiler import CouplingMap, Target
-from pennylane.tape import QuantumTape
+from pennylane.tape import QuantumTape, QuantumScript
 
 from qiskit.providers import BackendV2, Options  # type: ignore
 
 from mqp_client import MQPClient, ResourceInfo  # type: ignore
 from qiskit.circuit import QuantumCircuit
-from .mqp_resources import *
+from .mqp_resources import get_coupling_map, get_target
 
 # class MQPBackend():
 
 #     def __init__(self, class_name):
 
 
-class MQPPennylaneBackend(BackendV2):
+class MQSSPennylaneBackend(BackendV2):
     """MQP Pennylane Backend class"""
 
     def __init__(
@@ -61,11 +61,11 @@ class MQPPennylaneBackend(BackendV2):
         **options,
     ) -> MQPJob:
 
-        # Convert Pennylane QuantumTape(s) to QASM for the BQP-API
-        if isinstance(run_input, QuantumTape):
-            _circuits = str([run_input.to_openqasm()])
+        # Convert Pennylane QuantumTape(s) to QASM for the MQSS-Client
+        if isinstance(run_input, QuantumTape) or isinstance(run_input, QuantumScript):
+            _circuits = str([run_input.to_openqasm(rotations=False)])
         else:
-            _circuits = str([qc.to_openqasm() for qc in run_input])
+            _circuits = str([qc.to_openqasm(rotations=False) for qc in run_input])
         _circuit_format = "qasm"
 
         job_id = self.client.submit_job(
