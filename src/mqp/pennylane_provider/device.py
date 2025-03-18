@@ -55,6 +55,7 @@ class MQSSPennylaneDevice(Device):
 
         if isinstance(tape.measurements[0], qml.measurements.ExpectationMP):
             if isinstance(tape.measurements[0].obs, qml.ops.op_math.LinearCombination):
+                is_hamiltonian = True
                 circuits = self.create_batch_circuits_for_hamiltonians(
                     circuits[0], is_hamiltonian
                 )
