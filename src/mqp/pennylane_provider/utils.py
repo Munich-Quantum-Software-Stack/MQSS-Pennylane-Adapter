@@ -1,11 +1,34 @@
 from pennylane.operation import Operator
 
-int2bit = lambda x, N: str(bin(x)[2:].zfill(N))
-bit2int = lambda b: int("".join(str(bs) for bs in b), base=2)
+
+def int2bit(x: int, N: int):
+    """Converts an integer to a binary
+
+    Args:
+        x (int): Input number
+        N (int): Number of digits
+
+    Returns:
+        (str): Binary representation of the input number given as a string
+    """
+    return str(bin(x)[2:].zfill(N))
+
 
 operations = frozenset(
     {"PauliX", "PauliY", "PauliZ", "Hadamard", "CNOT", "CZ", "RX", "RY", "RZ"}
 )
+
+
+def bit2int(b: str):
+    """Given a binary as a string, find its integer representation
+
+    Args:
+        b (str): Binary in string
+
+    Returns:
+        (int): Integer representation
+    """
+    return int("".join(str(bs) for bs in b), base=2)
 
 
 def supports_operation(op: Operator) -> bool:
@@ -16,5 +39,4 @@ def supports_operation(op: Operator) -> bool:
     gate set for improved testing and reference purposes.
 
     """
-    print()
     return getattr(op, "name", None) in operations
