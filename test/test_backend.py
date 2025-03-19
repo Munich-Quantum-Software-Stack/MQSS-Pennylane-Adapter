@@ -220,3 +220,8 @@ def test_hamiltonian_measurements(
             f"There was an error while measuring the expectation value of the hamiltonian, with the following error: {e}"
         )
     assert abs(result - result_simulator) <= 1e-1
+
+
+def test_assert_token():
+    """Checks if the environment variables are set correctly"""
+    assert MQSS_TOKEN != ""

@@ -3,7 +3,8 @@ name: CI
 on: [push]
 
 env:
-  PIP_EXTRA_INDEX_URL: https://pypi.org/simple 
+  PIP_EXTRA_INDEX_URL: https://pypi.org/simple
+  MQSS_TOKEN: ${{ vars.MQSS_TOKEN }}
 
 jobs:
   setup:
