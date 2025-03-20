@@ -3,7 +3,8 @@ name: CI
 on: [push]
 
 env:
-  PIP_EXTRA_INDEX_URL: https://pypi.org/simple 
+  PIP_EXTRA_INDEX_URL: https://pypi.org/simple
+  MQSS_TOKEN: ${{ vars.MQSS_TOKEN }}
 
 jobs:
   setup:
@@ -37,4 +38,4 @@ jobs:
           run: uv run ruff check .
 
         - name: Run Pytest
-          run: uv run pytest -s --maxfail=1 --disable-warnings --cov=my_package tests/
+          run: uv run pytest -s --maxfail=1 --disable-warnings
