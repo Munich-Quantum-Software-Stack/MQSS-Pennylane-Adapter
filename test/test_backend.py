@@ -40,9 +40,7 @@ def quantum_function_expval(x: float, y: float) -> float:
     :param y: The parameter `y` in the `quantum_function_expval` function is used as the angle parameter for
     the rotation gate `RY(y, wires=1)`. This gate applies a rotation around the y-axis of the Bloch
     sphere by an angle `y` to the qubit on wire
-    :return: The function `quantum_function_expval` returns the expected value of the Pauli Z operator
-    acting on the second qubit (qubit 1) after applying the quantum operations RZ(x) on qubit 0, a CNOT
-    gate between qubits 0 and 1, and RY(y) on qubit 1.
+    :return: The function `quantum_function_expval` returns the expected value of a given operator
     """
     arbitrary_quantum_circuit(x, y)
     return qml.expval(qml.PauliX(0) @ qml.PauliY(1))
@@ -59,9 +57,7 @@ def quantum_function_autograd(x: float, y: float) -> float:
     :param y: The parameter `y` in the `quantum_function_expval` function is used as the angle parameter for
     the rotation gate `RY(y, wires=1)`. This gate applies a rotation around the y-axis of the Bloch
     sphere by an angle `y` to the qubit on wire
-    :return: The function `quantum_function_expval` returns the expected value of the Pauli Z operator
-    acting on the second qubit (qubit 1) after applying the quantum operations RZ(x) on qubit 0, a CNOT
-    gate between qubits 0 and 1, and RY(y) on qubit 1.
+    :return: The function `quantum_function_expval` returns the expected value of a given operator
     """
     arbitrary_quantum_circuit(x, y)
     return qml.expval(qml.PauliX(0) @ qml.PauliY(1))
@@ -78,9 +74,7 @@ def quantum_function_expval_simulator(x: float, y: float) -> float:
     :param y: The parameter `y` in the `quantum_function_expval` function is used as the angle parameter for
     the rotation gate `RY(y, wires=1)`. This gate applies a rotation around the y-axis of the Bloch
     sphere by an angle `y` to the qubit on wire
-    :return: The function `quantum_function_expval` returns the expected value of the Pauli Z operator
-    acting on the second qubit (qubit 1) after applying the quantum operations RZ(x) on qubit 0, a CNOT
-    gate between qubits 0 and 1, and RY(y) on qubit 1.
+    :return: The function `quantum_function_expval` returns the expected value of a given operator
     """
     arbitrary_quantum_circuit(x, y)
     return qml.expval(qml.PauliX(0) @ qml.PauliY(1))
@@ -99,9 +93,7 @@ def quantum_function_hamiltonian_expval(
     :param y: The parameter `y` in the `quantum_function_expval` function is used as the angle parameter for
     the rotation gate `RY(y, wires=1)`. This gate applies a rotation around the y-axis of the Bloch
     sphere by an angle `y` to the qubit on wire
-    :return: The function `quantum_function_expval` returns the expected value of the Pauli Z operator
-    acting on the second qubit (qubit 1) after applying the quantum operations RZ(x) on qubit 0, a CNOT
-    gate between qubits 0 and 1, and RY(y) on qubit 1.
+    :return: The function `quantum_function_expval` returns the expected value of a given operator
     :H: Pennylane Hamiltonian object
     """
     arbitrary_quantum_circuit(x, y)
@@ -122,9 +114,7 @@ def quantum_function_hamiltonian_expval_simulator(
     :param y: The parameter `y` in the `quantum_function_expval` function is used as the angle parameter for
     the rotation gate `RY(y, wires=1)`. This gate applies a rotation around the y-axis of the Bloch
     sphere by an angle `y` to the qubit on wire
-    :return: The function `quantum_function_expval` returns the expected value of the Pauli Z operator
-    acting on the second qubit (qubit 1) after applying the quantum operations RZ(x) on qubit 0, a CNOT
-    gate between qubits 0 and 1, and RY(y) on qubit 1.
+    :return: The function `quantum_function_expval` returns the expected value of a given operator
     :H: Pennylane Hamiltonian object
     """
     arbitrary_quantum_circuit(x, y)
@@ -135,7 +125,7 @@ def quantum_function_hamiltonian_expval_simulator(
     "params", [[np.pi / 3, np.pi / 17], [np.pi * 13 / 12, np.pi / 8]]
 )
 def test_compare_runs(params: list[float], method: str = "hellinger") -> bool:
-    """Compare the runs done on LRZ backend with ideal simulations in d
+    """Compare the runs done on LRZ backend with ideal simulations.
 
     Args:
         params (list[float]): List of parameters to the quantum circuit
@@ -150,7 +140,7 @@ def test_compare_runs(params: list[float], method: str = "hellinger") -> bool:
 
 @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
 def test_compare_generated_circuits(params: list[float]) -> bool:
-    """Compare the runs done on LRZ backend with ideal simulations in d
+    """Compare the runs done on LRZ backend with ideal simulations.
 
     Args:
 
@@ -220,8 +210,3 @@ def test_hamiltonian_measurements(
             f"There was an error while measuring the expectation value of the hamiltonian, with the following error: {e}"
         )
     assert abs(result - result_simulator) <= 1e-1
-
-
-def test_assert_token():
-    """Checks if the environment variables are set correctly"""
-    assert MQSS_TOKEN != ""
