@@ -9,10 +9,6 @@ from mqp_client import MQPClient, ResourceInfo  # type: ignore
 from qiskit.circuit import QuantumCircuit
 from .mqp_resources import get_coupling_map, get_target
 
-# class MQPBackend():
-
-#     def __init__(self, class_name):
-
 
 class MQSSPennylaneBackend(BackendV2):
     """MQP Pennylane Backend class"""
@@ -28,7 +24,7 @@ class MQSSPennylaneBackend(BackendV2):
         self.name = name
         self.client = client
         _resource_info = resource_info or self.client.resource_info(self.name)
-        # TODO: Remove print(_resource_info)
+
         # assert _resource_info is not None
         self._coupling_map = get_coupling_map(_resource_info)
         self._target = get_target(_resource_info)

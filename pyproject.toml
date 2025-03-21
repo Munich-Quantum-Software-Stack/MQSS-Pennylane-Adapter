@@ -1,7 +1,7 @@
 [project]
-name = "pennylane-provider"
+name = "pennylane-adapter"
 version = "0.1.0"
-description = "A Pennylane provider package for the Munich Quantum Portal."
+description = "A Pennylane Adapter package for the Munich Quantum Software Stack."
 authors = [
     { name = "Burak", email = "burak.mete@lrz.de" }
 ]

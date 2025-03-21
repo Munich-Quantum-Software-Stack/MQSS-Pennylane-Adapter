@@ -8,9 +8,9 @@ import copy
 import pennylane as qml
 
 
-from src.mqp.pennylane_provider.provider import MQSSPennylaneProvider
+from mqp.pennylane_adapter.adapter import MQSSPennylaneAdapter
 from src.config import MQSS_URL
-from src.mqp.pennylane_provider.utils import (
+from src.mqp.pennylane_adapter.utils import (
     int2bit,
     bit2int,
     supports_operation,
@@ -18,7 +18,22 @@ from src.mqp.pennylane_provider.utils import (
 
 
 class MQSSPennylaneDevice(Device):
-    """My Documentation."""
+    """Implements a Custom Pennylane Device that uses MQSS as a backend.
+
+    Attributes
+    ----------
+    TOKEN : str
+        Munich Quantum Portal (MQP) Token
+    BACKENDS : str
+        Munich Quantum Portal (MQP) Backend
+    Methods
+    -------
+    __init__(self):
+        Constructor
+    execute(self, circuits, execution_config, shots):
+        Sends the Pennylane circuit to the specified MQSS backend.
+
+    """
 
     def __init__(
         self,
@@ -29,6 +44,16 @@ class MQSSPennylaneDevice(Device):
         seed=None,
         supports_derivatives=False,
     ):
+        """Construct an MQSSPennylaneDevice Object
+
+        Args:
+            token (str): Munich Quantum Portal (MQP) token
+            backends (str): MQP backend
+            wires (int, optional): Number of wires in the circuit Defaults to None.
+            shots (int, optional): Number of shots, for expectation values leave it as None. Defaults to None.
+            seed (int, optional): Defaults to None.
+            supports_derivatives (bool, optional): Boolean flag for autograd support. Defaults to False.
+        """
         super().__init__(wires=wires, shots=shots)
         self.TOKEN = token
         self.BACKENDS = backends
@@ -39,9 +64,18 @@ class MQSSPennylaneDevice(Device):
         execution_config: DefaultExecutionConfig,
         shots=1024,
     ) -> TensorLike:
+        """Sends the Pennylane circuit to the specified MQSS backend.
 
-        provider = MQSSPennylaneProvider(token=self.TOKEN, url=MQSS_URL)
-        backend = provider.get_backend(self.BACKENDS)
+        Args:
+            circuits (QuantumScriptOrBatch): Pennylane circuit
+            execution_config (DefaultExecutionConfig): Additional config for the circuit if necessary
+            shots (int, optional): Number of shots. Defaults to 1024.
+
+        Returns:
+            TensorLike: Measurement results
+        """
+        adapter = MQSSPennylaneAdapter(token=self.TOKEN, url=MQSS_URL)
+        backend = adapter.get_backend(self.BACKENDS)
         is_hamiltonian = False
         for tape in circuits:
             try:
@@ -50,8 +84,6 @@ class MQSSPennylaneDevice(Device):
                 print(
                     f"Skipping tape due to error in validating operations, original exception: {e}"
                 )
-
-        # TODO2:What happens if there is no measurement instruction, or probs?
 
         if isinstance(tape.measurements[0], qml.measurements.ExpectationMP):
             if isinstance(tape.measurements[0].obs, qml.ops.op_math.LinearCombination):

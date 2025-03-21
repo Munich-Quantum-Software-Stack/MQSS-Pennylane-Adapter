@@ -7,8 +7,8 @@ from mqp_client import MQPClient  # type: ignore
 from .backend import MQSSPennylaneBackend
 
 
-class MQSSPennylaneProvider(ProviderV1):
-    """MQSS Pennylane Provider Class"""
+class MQSSPennylaneAdapter(ProviderV1):
+    """MQSS Pennylane Adapter Class"""
 
     def __init__(self, token: str, url: Optional[str] = None) -> None:
         if url:
