@@ -13,7 +13,7 @@ The users would be able to use all full-fletched PennyLane functions (optimizati
 ## 🛠️ Installation
 To install the package, simply run 
 ```bash
-pip install mqss-pennylane-provider
+pip install mqss-pennylane-adapter
 ```
 
 ## 🚀 Usage
@@ -21,7 +21,7 @@ MQSS PennyLane Provider has support for most of the native PennyLane features. F
 ```python
 import pennylane as qml
 from pennylane import numpy as np
-from src.mqp.pennylane_provider.device import MQSSPennylaneDevice
+from src.mqp.pennylane_adapter.device import MQSSPennylaneDevice
 
 dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 
@@ -52,7 +52,7 @@ Furthermore, you can define a Hamiltonian object within PennyLane, and calculate
 ```python
 import pennylane as qml
 from pennylane import numpy as np
-from src.mqp.pennylane_provider.device import MQSSPennylaneDevice
+from src.mqp.pennylane_adapter.device import MQSSPennylaneDevice
 dev_hamiltonian = MQSSPennylaneDevice(wires=2, token='<MQSS_TOKEN>', backends='<MQSS_BACKENDS>')
 @qml.qnode(dev_hamiltonian)
 def quantum_function_hamiltonian_expval(
