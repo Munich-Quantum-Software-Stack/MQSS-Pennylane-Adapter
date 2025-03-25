@@ -18,13 +18,6 @@ dependencies = [
 [tool.uv]
 package = true
 
-#[[tool.uv.index]]
-# Optional name for the index.
-#name = "lrz"
-# Required URL for the index.
-#url = "https://pypi.quantum.lrz.de"
-
-
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["test"]  # Specify the directory containing test files
