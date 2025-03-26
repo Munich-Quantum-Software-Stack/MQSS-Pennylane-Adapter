@@ -8,9 +8,9 @@ import copy
 import pennylane as qml
 
 
-from mqp.pennylane_adapter.adapter import MQSSPennylaneAdapter
-from src.config import MQSS_URL
-from src.mqp.pennylane_adapter.utils import (
+from mqss.pennylane_adapter.adapter import MQSSPennylaneAdapter
+from mqss.pennylane_adapter.config import MQSS_URL
+from .utils import (
     int2bit,
     bit2int,
     supports_operation,
