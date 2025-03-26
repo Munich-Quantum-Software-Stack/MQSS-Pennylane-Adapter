@@ -5,7 +5,7 @@
   />
 </a>
 
-# MQSS Pennylane Provider
+# MQSS Pennylane Adapter
 
 This repository implements a custom PennyLane backend called MQSSPennylaneDevice, which is able to send quantum jobs to LRZ's infrastructure using the PennyLane frontend. 
 The users would be able to use all full-fletched PennyLane functions (optimization, QML etc.) while running their jobs on LRZ's Quantum Hardware.
