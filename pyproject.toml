@@ -26,3 +26,11 @@ addopts = "--verbose"  # Add verbosity to the test output
 [scripts]
 test = "pytest"
 
+[dependency-groups]
+dev = [
+    "mkdocs>=1.6.1",
+    "mkdocs-autorefs>=1.4.1",
+    "mkdocs-material>=9.6.9",
+    "mkdocstrings[python]>=0.29.0",
+]
+
