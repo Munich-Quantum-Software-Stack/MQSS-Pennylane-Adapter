@@ -11,7 +11,7 @@ from .mqp_resources import get_coupling_map, get_target
 
 
 class MQSSPennylaneBackend(BackendV2):
-    """MQP Pennylane Backend class"""
+    """MQP Pennylane Backend class responsible for handling requests and responses from the MQSS Backend."""
 
     def __init__(
         self,
@@ -25,7 +25,6 @@ class MQSSPennylaneBackend(BackendV2):
         self.client = client
         _resource_info = resource_info or self.client.resource_info(self.name)
 
-        # assert _resource_info is not None
         self._coupling_map = get_coupling_map(_resource_info)
         self._target = get_target(_resource_info)
 
@@ -37,6 +36,11 @@ class MQSSPennylaneBackend(BackendV2):
 
     @property
     def coupling_map(self) -> CouplingMap:
+        """Returns the coupling map of the selected backend
+
+        Returns:
+            CouplingMap: CouplingMap
+        """
         return self._coupling_map
 
     @property
@@ -56,8 +60,16 @@ class MQSSPennylaneBackend(BackendV2):
         no_modify: bool = False,
         **options,
     ) -> MQPJob:
+        """Sends the quantum circuit(s) to the selected backend.
 
-        # Convert Pennylane QuantumTape(s) to QASM for the MQSS-Client
+        Args:
+            run_input (Union[QuantumCircuit, List[QuantumCircuit]]): Pennylane circuit
+            shots (int, optional): Number of shots. Defaults to 1024.
+            no_modify (bool, optional): Flag to bypass MQSS transpilation. no_modify=True means the transpilation will be bypassed if possible. Defaults to False.
+
+        Returns:
+            MQPJob: Returns the MQPJob object
+        """
         if isinstance(run_input, QuantumTape) or isinstance(run_input, QuantumScript):
             _circuits = str([run_input.to_openqasm(rotations=False)])
         else:
