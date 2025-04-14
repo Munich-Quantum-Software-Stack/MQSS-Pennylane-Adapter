@@ -423,7 +423,6 @@ source = { editable = "." }
 dependencies = [
     { name = "mqp-client" },
     { name = "pennylane" },
-    { name = "pytest" },
     { name = "python-dotenv" },
     { name = "qiskit" },
     { name = "requests" },
@@ -435,15 +434,15 @@ dev = [
     { name = "mkdocs-autorefs" },
     { name = "mkdocs-material" },
     { name = "mkdocstrings", extra = ["python"] },
+    { name = "pytest" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "mqp-client", specifier = "==0.1.4" },
     { name = "pennylane", specifier = ">=0.39.0" },
-    { name = "pytest", specifier = ">=8.3.3" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
-    { name = "qiskit", specifier = ">=1.2.4" },
+    { name = "qiskit", specifier = ">=1.2.4,<1.4.0" },
     { name = "requests", specifier = ">=2.32.3" },
 ]
 
@@ -453,6 +452,7 @@ dev = [
     { name = "mkdocs-autorefs", specifier = ">=1.4.1" },
     { name = "mkdocs-material", specifier = ">=9.6.9" },
     { name = "mkdocstrings", extras = ["python"], specifier = ">=0.29.0" },
+    { name = "pytest", specifier = ">=8.3.3" },
 ]
 
 [[package]]
