@@ -1,8 +1,8 @@
 import pennylane as qml
 
 import pytest
-from mqss.pennylane_adapter.config import MQSS_TOKEN, MQSS_BACKENDS
-from mqss.pennylane_adapter.device import MQSSPennylaneDevice
+from src.mqss.pennylane_adapter.config import MQSS_TOKEN, MQSS_BACKENDS
+from src.mqss.pennylane_adapter.device import MQSSPennylaneDevice
 from pennylane import numpy as np
 
 dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
