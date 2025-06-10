@@ -12,7 +12,7 @@ class MQSSPennylaneAdapter(ProviderV1):
 
     def __init__(self, token: str, url: Optional[str] = None) -> None:
         if url:
-            self._client = MQSSClient(url=url, token=token)
+            self._client = MQSSClient(base_url=url, token=token)
         else:
             self._client = MQSSClient(token=token)
 

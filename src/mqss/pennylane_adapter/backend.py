@@ -23,8 +23,9 @@ class MQSSPennylaneBackend(BackendV2):
         super().__init__(**kwargs)
         self.name = name
         self.client = client
-        _resource_info = resource_info or self.client.resource_info(self.name)
-
+        _resource_info = resource_info or (
+            self.client.get_resource_info(self.name) if name else None
+        )
         self._coupling_map = get_coupling_map(_resource_info)
         self._target = get_target(_resource_info)
 
@@ -58,6 +59,7 @@ class MQSSPennylaneBackend(BackendV2):
         run_input: Union[QuantumCircuit, List[QuantumCircuit]],
         shots: int = 1024,
         no_modify: bool = False,
+        queued: bool = False,
         **options,
     ) -> MQPJob:
         """Sends the quantum circuit(s) to the selected backend.
@@ -77,11 +79,12 @@ class MQSSPennylaneBackend(BackendV2):
         _circuit_format = "qasm"
 
         job_request = CircuitJobRequest(
-            circuit=_circuits,
+            circuits=_circuits,
             circuit_format=_circuit_format,
             resource_name=self.name,
             shots=shots,
             no_modify=no_modify,
+            queued=queued,
         )
         job_id = self.client.submit_job(job_request)
         return MQPJob(self.client, job_id, job_request)
