@@ -14,7 +14,6 @@ from .utils import (
     bit2int,
     supports_operation,
 )
-import scipy as sp
 
 
 class MQSSPennylaneDevice(Device):
