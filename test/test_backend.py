@@ -5,6 +5,14 @@ from src.mqss.pennylane_adapter.config import MQSS_TOKEN, MQSS_BACKENDS
 from src.mqss.pennylane_adapter.device import MQSSPennylaneDevice
 from pennylane import numpy as np
 from .pennylane_adapter_tests_base import TestPennylaneAdapter
+from .mocks import MOCK_JOB_DATA
+
+from datetime import datetime
+import json
+from mqss_client import (
+    MQSSClient,
+    Result,
+)
 
 dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_simulator = qml.device("default.qubit", wires=2)
@@ -124,6 +132,36 @@ def quantum_function_hamiltonian_expval_simulator(
 
 @pytest.mark.mock
 class TestPennylaneJobs(TestPennylaneAdapter):
+
+    @pytest.fixture(autouse=True)
+    def patch_submit_job(self, monkeypatch):
+        def mock_submit_job(self, job_request):
+            return "mock-uuid-12345"
+
+        monkeypatch.setattr(MQSSClient, "submit_job", mock_submit_job)
+
+    @pytest.fixture(autouse=True)
+    def patch_job_result(self, monkeypatch):
+        def mock_job_result(self, uuid, job_type):
+            # Just always return the MOCK_JOB_DATA for the fixed UUID and job type key
+            key = f"job/{uuid}/result"  # or hardcode if you want
+            result_json = MOCK_JOB_DATA.get(key)
+            # Construct Result without any checks
+            return Result(
+                counts=json.loads(result_json["result"]),
+                timestamp_completed=datetime.strptime(
+                    result_json["timestamp_completed"], "%Y-%m-%d %H:%M:%S.%f"
+                ),
+                timestamp_submitted=datetime.strptime(
+                    result_json["timestamp_submitted"], "%Y-%m-%d %H:%M:%S.%f"
+                ),
+                timestamp_scheduled=datetime.strptime(
+                    result_json["timestamp_scheduled"], "%Y-%m-%d %H:%M:%S.%f"
+                ),
+            )
+
+        monkeypatch.setattr(MQSSClient, "wait_for_job_result", mock_job_result)
+
     @pytest.mark.parametrize(
         "params", [[np.pi / 3, np.pi / 17], [np.pi * 13 / 12, np.pi / 8]]
     )

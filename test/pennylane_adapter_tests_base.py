@@ -1,15 +1,8 @@
 import pytest
 
-from mqss_client import (
-    MQSSClient,
-    Result,
-)
+
 import pennylane as qml
 from .config import CURRENT_RESOURCES
-from .mocks import MOCK_JOB_DATA
-
-from datetime import datetime
-import json
 
 
 @pytest.fixture
@@ -40,32 +33,3 @@ class TestPennylaneAdapter:
             qml.RX(x, wires=1)
 
         return arbitrary_quantum_circuit
-
-    @pytest.fixture(autouse=True)
-    def patch_submit_job(self, monkeypatch):
-        def mock_submit_job(self, job_request):
-            return "mock-uuid-12345"
-
-        monkeypatch.setattr(MQSSClient, "submit_job", mock_submit_job)
-
-    @pytest.fixture(autouse=True)
-    def patch_job_result(self, monkeypatch):
-        def mock_job_result(self, uuid, job_type):
-            # Just always return the MOCK_JOB_DATA for the fixed UUID and job type key
-            key = f"job/{uuid}/result"  # or hardcode if you want
-            result_json = MOCK_JOB_DATA.get(key)
-            # Construct Result without any checks
-            return Result(
-                counts=json.loads(result_json["result"]),
-                timestamp_completed=datetime.strptime(
-                    result_json["timestamp_completed"], "%Y-%m-%d %H:%M:%S.%f"
-                ),
-                timestamp_submitted=datetime.strptime(
-                    result_json["timestamp_submitted"], "%Y-%m-%d %H:%M:%S.%f"
-                ),
-                timestamp_scheduled=datetime.strptime(
-                    result_json["timestamp_scheduled"], "%Y-%m-%d %H:%M:%S.%f"
-                ),
-            )
-
-        monkeypatch.setattr(MQSSClient, "wait_for_job_result", mock_job_result)
