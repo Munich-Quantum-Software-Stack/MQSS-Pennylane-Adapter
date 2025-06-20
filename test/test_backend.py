@@ -4,6 +4,7 @@ import pytest
 from src.mqss.pennylane_adapter.config import MQSS_TOKEN, MQSS_BACKENDS
 from src.mqss.pennylane_adapter.device import MQSSPennylaneDevice
 from pennylane import numpy as np
+from .pennylane_adapter_tests_base import TestPennylaneAdapter
 
 dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_simulator = qml.device("default.qubit", wires=2)
@@ -121,92 +122,92 @@ def quantum_function_hamiltonian_expval_simulator(
     return qml.expval(H)
 
 
-@pytest.mark.parametrize(
-    "params", [[np.pi / 3, np.pi / 17], [np.pi * 13 / 12, np.pi / 8]]
-)
-def test_compare_runs(params: list[float], method: str = "hellinger") -> bool:
-    """Compare the runs done on LRZ backend with ideal simulations.
-
-    Args:
-        params (list[float]): List of parameters to the quantum circuit
-        method (str):
-            'hellinger': Hellinger distance
-            'fidelity': Exact fidelity calculation, requires state tomography from QC
-    """
-    result_simulator = quantum_function_expval_simulator(*params)
-    result = quantum_function_expval(*params)
-    assert abs(result - result_simulator) <= 1e-1
-
-
-@pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
-def test_compare_generated_circuits(params: list[float]) -> bool:
-    """Compare the runs done on LRZ backend with ideal simulations.
-
-    Args:
-
-        params (list[float]): List of parameters to the quantum circuit
-
-    """
-    _ = quantum_function_expval_simulator(*params)
-    _ = quantum_function_expval(*params)
-
-    assert (
-        quantum_function_expval.qtape.operations
-        == quantum_function_expval_simulator.qtape.operations
+@pytest.mark.mock
+class TestPennylaneJobs(TestPennylaneAdapter):
+    @pytest.mark.parametrize(
+        "params", [[np.pi / 3, np.pi / 17], [np.pi * 13 / 12, np.pi / 8]]
     )
+    def test_compare_runs(
+        monkeypatch: pytest.MonkeyPatch, params: list[float], method: str = "hellinger"
+    ) -> bool:
+        """Compare the runs done on LRZ backend with ideal simulations.
 
+        Args:
+            params (list[float]): List of parameters to the quantum circuit
+            method (str):
+                'hellinger': Hellinger distance
+                'fidelity': Exact fidelity calculation, requires state tomography from QC
+        """
+        result = quantum_function_expval(*params)
+        assert result is not None
 
-@pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
-def _test_autograd(params: list[float]) -> bool:
-    """Compare the runs done on LRZ backend with ideal simulations in d
+    @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
+    def _test_compare_generated_circuits(params: list[float]) -> bool:
+        """Compare the runs done on LRZ backend with ideal simulations.
 
-    Args:
+        Args:
 
-        params (list[float]): List of parameters to the quantum circuit
+            params (list[float]): List of parameters to the quantum circuit
 
-    """
+        """
+        _ = quantum_function_expval_simulator(*params)
+        _ = quantum_function_expval(*params)
 
-    results = qml.gradients.param_shift(quantum_function_autograd)(*params)
-    print(results)
-    assert (
-        quantum_function_expval.qtape.operations
-        == quantum_function_expval_simulator.qtape.operations
-    )
+        assert (
+            quantum_function_expval.qtape.operations
+            == quantum_function_expval_simulator.qtape.operations
+        )
 
+    @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
+    def _test_autograd(params: list[float]) -> bool:
+        """Compare the runs done on LRZ backend with ideal simulations in d
 
-@pytest.mark.parametrize("coeffs", [[1.5, -0.92]])
-@pytest.mark.parametrize(
-    "obs",
-    [
+        Args:
+
+            params (list[float]): List of parameters to the quantum circuit
+
+        """
+
+        results = qml.gradients.param_shift(quantum_function_autograd)(*params)
+        print(results)
+        assert (
+            quantum_function_expval.qtape.operations
+            == quantum_function_expval_simulator.qtape.operations
+        )
+
+    @pytest.mark.parametrize("coeffs", [[1.5, -0.92]])
+    @pytest.mark.parametrize(
+        "obs",
         [
-            qml.PauliX(0) @ qml.PauliY(1),
-            qml.PauliY(0) @ qml.PauliZ(1),
-        ]
-    ],
-)
-@pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
-def test_hamiltonian_measurements(
-    params: list[float],
-    coeffs: list[float],
-    obs: list[qml.ops.qubit.non_parametric_ops],
-):
-    """Run a quantum circuit with a hamiltonian expectation value
+            [
+                qml.PauliX(0) @ qml.PauliY(1),
+                qml.PauliY(0) @ qml.PauliZ(1),
+            ]
+        ],
+    )
+    @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
+    def _test_hamiltonian_measurements(
+        params: list[float],
+        coeffs: list[float],
+        obs: list[qml.ops.qubit.non_parametric_ops],
+    ):
+        """Run a quantum circuit with a hamiltonian expectation value
 
-    Args:
-        coeffs (list[float]): _description_
-        obs (list[qml.ops.qubit.non_parametric_ops]): _description_
-    """
+        Args:
+            coeffs (list[float]): _description_
+            obs (list[qml.ops.qubit.non_parametric_ops]): _description_
+        """
 
-    hamiltonian = qml.Hamiltonian(coeffs, obs)
+        hamiltonian = qml.Hamiltonian(coeffs, obs)
 
-    try:
-        result = quantum_function_hamiltonian_expval(*params, hamiltonian)
-        result_simulator = quantum_function_hamiltonian_expval_simulator(
-            *params, hamiltonian
-        )
+        try:
+            result = quantum_function_hamiltonian_expval(*params, hamiltonian)
+            result_simulator = quantum_function_hamiltonian_expval_simulator(
+                *params, hamiltonian
+            )
 
-    except Exception as e:
-        print(
-            f"There was an error while measuring the expectation value of the hamiltonian, with the following error: {e}"
-        )
-    assert abs(result - result_simulator) <= 1e-1
+        except Exception as e:
+            print(
+                f"There was an error while measuring the expectation value of the hamiltonian, with the following error: {e}"
+            )
+        assert abs(result - result_simulator) <= 1e-1
