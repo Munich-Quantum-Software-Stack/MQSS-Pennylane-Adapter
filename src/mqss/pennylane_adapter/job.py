@@ -4,21 +4,22 @@ from qiskit.providers import JobStatus as QiskitJobStatus  # type: ignore
 from qiskit.providers import JobV1  # type: ignore
 from qiskit.result import Counts, Result  # type: ignore
 
-from mqp_client import JobStatus, MQPClient  # type: ignore
+from mqss_client import JobStatus, MQSSClient, CircuitJobRequest  # type: ignore
 
 
 class MQPJob(JobV1):
     """MQPJob Class"""
 
-    def __init__(self, client: MQPClient, job_id: str, **kwargs) -> None:
+    def __init__(self, client: MQSSClient, job_id: str, job_request: CircuitJobRequest,**kwargs) -> None:
         super().__init__(None, job_id, **kwargs)
         self.client = client
+        self.job_request = job_request
 
     def submit(self):
-        return NotImplementedError("Submit jobs via the MQPClient")
+        return NotImplementedError("Submit jobs via the MQSSClient")
 
     def cancel(self):
-        self.client.cancel(self.job_id())
+        self.client.cancel_job(self.job_id(), self.job_request)
 
     def status(self):
         """Returns the job status
@@ -29,18 +30,18 @@ class MQPJob(JobV1):
         Returns:
             status: QiskitJobStatus
         """
-        mqp_status = self.client.status(self.job_id())
-        if mqp_status == JobStatus.PENDING:
+        mqss_status = self.client.job_status(self.job_id(), self.job_request)
+        if mqss_status == JobStatus.PENDING:
             return QiskitJobStatus.INITIALIZING
-        if mqp_status == JobStatus.WAITING:
+        if mqss_status == JobStatus.WAITING:
             return QiskitJobStatus.QUEUED
-        if mqp_status == JobStatus.CANCELLED:
+        if mqss_status == JobStatus.CANCELLED:
             return QiskitJobStatus.CANCELLED
-        if mqp_status == JobStatus.FAILED:
+        if mqss_status == JobStatus.FAILED:
             return QiskitJobStatus.ERROR
-        if mqp_status == JobStatus.COMPLETED:
+        if mqss_status == JobStatus.COMPLETED:
             return QiskitJobStatus.DONE
-        raise RuntimeWarning(f"Unknown job status: {mqp_status}.")
+        raise RuntimeWarning(f"Unknown job status: {mqss_status}.")
 
     def result(self):
         """Fetches the results from the MQSS Backend and returns it to the user.
@@ -68,7 +69,7 @@ class MQPJob(JobV1):
         Returns:
             result_dict: dict
         """
-        res = self.client.wait_for_result(self.job_id())
+        res = self.client.wait_for_job_result(self.job_id(), self.job_request)
         if isinstance(res.counts, list):
             res_counts = res.counts
         else:
@@ -77,7 +78,7 @@ class MQPJob(JobV1):
             "backend_name": None,
             "backend_version": None,
             "qobj_id": None,
-            "job_id": self._job_id,
+            "job_id": self.job_id(),
             "success": True,
             "results": [
                 {

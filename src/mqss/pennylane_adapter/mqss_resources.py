@@ -6,7 +6,7 @@ from qiskit.circuit.library import CZGate, IGate, RGate, RXXGate, RZGate  # type
 from qiskit.circuit.parameter import Parameter  # type: ignore
 from qiskit.transpiler import CouplingMap, Target  # type: ignore
 
-from mqp_client import ResourceInfo  # type: ignore
+from mqss_client import ResourceInfo  # type: ignore
 
 
 def get_coupling_map(resource_info: ResourceInfo):
