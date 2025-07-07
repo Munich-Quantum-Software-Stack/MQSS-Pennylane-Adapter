@@ -7,7 +7,7 @@
 
 [![Documentation](https://img.shields.io/badge/Documentation-Read%20the%20Docs-blue)](https://munich-quantum-software-stack.github.io/MQSS-Interfaces/pennylane/)
 ![PyPI - Version](https://img.shields.io/pypi/v/mqss-pennylane-adapter)
-![PyPI - Python Version](https://img.shields.io/pypi/pyversions/mqss-pennylane-adapter)
+
 
 
 # MQSS Pennylane Adapter
