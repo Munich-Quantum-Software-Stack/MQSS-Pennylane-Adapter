@@ -5,6 +5,11 @@
   />
 </a>
 
+[![Documentation](https://img.shields.io/badge/Documentation-Read%20the%20Docs-blue)](https://munich-quantum-software-stack.github.io/MQSS-Interfaces/pennylane/)
+![PyPI - Version](https://img.shields.io/pypi/v/mqss-pennylane-adapter)
+
+
+
 # MQSS Pennylane Adapter
 
 This repository implements a custom PennyLane backend called MQSSPennylaneDevice, which is able to send quantum jobs to LRZ's infrastructure using the PennyLane frontend. 
