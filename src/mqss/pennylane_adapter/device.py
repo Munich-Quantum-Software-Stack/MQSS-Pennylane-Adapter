@@ -7,7 +7,6 @@ from typing import Union
 import copy
 import pennylane as qml
 
-
 from mqss.pennylane_adapter.adapter import MQSSPennylaneAdapter
 from mqss.pennylane_adapter.config import MQSS_URL
 from .utils import (

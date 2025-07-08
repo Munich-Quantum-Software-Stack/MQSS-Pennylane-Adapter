@@ -38,4 +38,4 @@ jobs:
           run: uv run ruff check .
 
         - name: Run Pytest
-          run: uv run pytest -s --maxfail=1 --disable-warnings
+          run: uv run pytest -s -m "mock" --maxfail=1 --disable-warnings

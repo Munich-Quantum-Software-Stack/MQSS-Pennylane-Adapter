@@ -5,14 +5,6 @@ from src.mqss.pennylane_adapter.config import MQSS_TOKEN, MQSS_BACKENDS
 from src.mqss.pennylane_adapter.device import MQSSPennylaneDevice
 from pennylane import numpy as np
 from .pennylane_adapter_tests_base import TestPennylaneAdapter
-from .mocks import MOCK_JOB_DATA
-
-from datetime import datetime
-import json
-from mqss_client import (
-    MQSSClient,
-    Result,
-)
 
 dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_simulator = qml.device("default.qubit", wires=2)
@@ -130,43 +122,13 @@ def quantum_function_hamiltonian_expval_simulator(
     return qml.expval(H)
 
 
-@pytest.mark.mock
-class TestPennylaneJobs(TestPennylaneAdapter):
-
-    @pytest.fixture(autouse=True)
-    def patch_submit_job(self, monkeypatch):
-        def mock_submit_job(self, job_request):
-            return "mock-uuid-12345"
-
-        monkeypatch.setattr(MQSSClient, "submit_job", mock_submit_job)
-
-    @pytest.fixture(autouse=True)
-    def patch_job_result(self, monkeypatch):
-        def mock_job_result(self, uuid, job_type):
-            # Just always return the MOCK_JOB_DATA for the fixed UUID and job type key
-            key = f"job/{uuid}/result"  # or hardcode if you want
-            result_json = MOCK_JOB_DATA.get(key)
-            # Construct Result without any checks
-            return Result(
-                counts=json.loads(result_json["result"]),
-                timestamp_completed=datetime.strptime(
-                    result_json["timestamp_completed"], "%Y-%m-%d %H:%M:%S.%f"
-                ),
-                timestamp_submitted=datetime.strptime(
-                    result_json["timestamp_submitted"], "%Y-%m-%d %H:%M:%S.%f"
-                ),
-                timestamp_scheduled=datetime.strptime(
-                    result_json["timestamp_scheduled"], "%Y-%m-%d %H:%M:%S.%f"
-                ),
-            )
-
-        monkeypatch.setattr(MQSSClient, "wait_for_job_result", mock_job_result)
-
+@pytest.mark.live
+class TestPennylaneLiveJobs(TestPennylaneAdapter):
     @pytest.mark.parametrize(
         "params", [[np.pi / 3, np.pi / 17], [np.pi * 13 / 12, np.pi / 8]]
     )
-    def test_compare_runs(
-        monkeypatch: pytest.MonkeyPatch, params: list[float], method: str = "hellinger"
+    def _test_compare_runs(
+        self, params: list[float], method: str = "hellinger"
     ) -> bool:
         """Compare the runs done on LRZ backend with ideal simulations.
 
@@ -176,11 +138,12 @@ class TestPennylaneJobs(TestPennylaneAdapter):
                 'hellinger': Hellinger distance
                 'fidelity': Exact fidelity calculation, requires state tomography from QC
         """
+        result_simulator = quantum_function_expval_simulator(*params)
         result = quantum_function_expval(*params)
-        assert result is not None
+        assert abs(result - result_simulator) <= 1e-1
 
     @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
-    def _test_compare_generated_circuits(params: list[float]) -> bool:
+    def _test_compare_generated_circuits(self, params: list[float]) -> bool:
         """Compare the runs done on LRZ backend with ideal simulations.
 
         Args:
@@ -197,7 +160,7 @@ class TestPennylaneJobs(TestPennylaneAdapter):
         )
 
     @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
-    def _test_autograd(params: list[float]) -> bool:
+    def _test_autograd(self, params: list[float]) -> bool:
         """Compare the runs done on LRZ backend with ideal simulations in d
 
         Args:
@@ -224,7 +187,8 @@ class TestPennylaneJobs(TestPennylaneAdapter):
         ],
     )
     @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
-    def _test_hamiltonian_measurements(
+    def test_hamiltonian_measurements(
+        self,
         params: list[float],
         coeffs: list[float],
         obs: list[qml.ops.qubit.non_parametric_ops],

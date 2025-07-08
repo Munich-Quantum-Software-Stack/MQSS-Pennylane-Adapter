@@ -2,8 +2,8 @@ name: Update docs
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - "v*.*.*" # Trigger on version tags
 
 jobs:
   update-docs:
