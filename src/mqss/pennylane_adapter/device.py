@@ -172,6 +172,14 @@ class MQSSPennylaneDevice(Device):
                         for op in circuits[cdx]._measurements[0].obs.base
                     ]
                 else:
+
+                    if isinstance(
+                        circuits[cdx]._measurements[0].obs,
+                        (qml.PauliX, qml.PauliY, qml.PauliZ),
+                    ):
+                        measured_qubits = [
+                            circuits[cdx]._measurements[0].obs.wires.labels[0]
+                        ]
                     measured_qubits = [
                         op.wires.labels[0] for op in circuits[cdx]._measurements[0].obs
                     ]
