@@ -15,6 +15,7 @@ from mqss_client import (
 )
 
 dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
+dev_single = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_simulator = qml.device("default.qubit", wires=2)
 dev_hamiltonian = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_hamiltonian_simulator = qml.device("default.qubit", wires=2)
@@ -53,6 +54,23 @@ def quantum_function_expval(x: float, y: float) -> float:
     """
     arbitrary_quantum_circuit(x, y)
     return qml.expval(qml.PauliX(0) @ qml.PauliY(1))
+
+
+@qml.qnode(dev_single)
+def quantum_function_expval_single_pauli(x: float, y: float) -> float:
+    """
+    The function `quantum_function_expval` applies quantum operations RZ, CNOT, and RY to qubits and returns
+    the expectation value of PauliZ on the second qubit.
+
+    :param x: The parameter `x` in the `quantum_function_expval` represents the angle for the rotation gate
+    `RZ` applied on the qubit at wire 0
+    :param y: The parameter `y` in the `quantum_function_expval` function is used as the angle parameter for
+    the rotation gate `RY(y, wires=1)`. This gate applies a rotation around the y-axis of the Bloch
+    sphere by an angle `y` to the qubit on wire
+    :return: The function `quantum_function_expval` returns the expected value of a given operator
+    """
+    arbitrary_quantum_circuit(x, y)
+    return qml.expval(qml.PauliX(0))
 
 
 @qml.qnode(dev_autograd, interface="autograd", diff_method="parameter-shift")
@@ -177,6 +195,23 @@ class TestPennylaneJobs(TestPennylaneAdapter):
                 'fidelity': Exact fidelity calculation, requires state tomography from QC
         """
         result = quantum_function_expval(*params)
+        assert result is not None
+
+    @pytest.mark.parametrize(
+        "params", [[np.pi / 3, np.pi / 17], [np.pi * 13 / 12, np.pi / 8]]
+    )
+    def test_compare_runs_single_pauli(
+        monkeypatch: pytest.MonkeyPatch, params: list[float], method: str = "hellinger"
+    ) -> bool:
+        """Compare the runs done on LRZ backend with ideal simulations.
+
+        Args:
+            params (list[float]): List of parameters to the quantum circuit
+            method (str):
+                'hellinger': Hellinger distance
+                'fidelity': Exact fidelity calculation, requires state tomography from QC
+        """
+        result = quantum_function_expval_single_pauli(*params)
         assert result is not None
 
     @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])

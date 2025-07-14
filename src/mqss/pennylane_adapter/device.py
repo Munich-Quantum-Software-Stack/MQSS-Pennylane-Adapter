@@ -172,9 +172,19 @@ class MQSSPennylaneDevice(Device):
                         for op in circuits[cdx]._measurements[0].obs.base
                     ]
                 else:
-                    measured_qubits = [
-                        op.wires.labels[0] for op in circuits[cdx]._measurements[0].obs
-                    ]
+
+                    if isinstance(
+                        circuits[cdx]._measurements[0].obs,
+                        (qml.PauliX, qml.PauliY, qml.PauliZ),
+                    ):
+                        measured_qubits = [
+                            circuits[cdx]._measurements[0].obs.wires.labels[0]
+                        ]
+                    else:
+                        measured_qubits = [
+                            op.wires.labels[0]
+                            for op in circuits[cdx]._measurements[0].obs
+                        ]
 
                 num_qubits = len(circuits[cdx].wires)
                 expectation = self.get_expectation_value(
