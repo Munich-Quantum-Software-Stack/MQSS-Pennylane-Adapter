@@ -2,9 +2,7 @@
 name = "mqss-pennylane-adapter"
 version = "1.1.2"
 description = "A Pennylane Adapter package for the Munich Quantum Software Stack."
-authors = [
-    { name = "Burak", email = "burak.mete@lrz.de" }
-]
+authors = [{ name = "mqss", email = "mqss@munich-quantum-valley.de" }]
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -21,7 +19,7 @@ package = true
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["test"]  # Specify the directory containing test files
-addopts = "--verbose"  # Add verbosity to the test output
+addopts = "--verbose" # Add verbosity to the test output
 
 [scripts]
 test = "pytest"
@@ -34,4 +32,3 @@ dev = [
     "mkdocstrings[python]>=0.29.0",
     "pytest>=8.3.3",
 ]
-
