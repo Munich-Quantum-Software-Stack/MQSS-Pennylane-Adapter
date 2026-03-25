@@ -27,6 +27,9 @@ CURRENT_RESOURCES = {
     "QLM": ResourceInfo(
         name="QLM", qubits=38, online=True, connectivity=None, instructions=None
     ),
+    "EQE1": ResourceInfo(
+        name="EQE1", qubits=54, online=True, connectivity=None, instructions=None
+    ),
 }
 
 QASM_FILE = "test/example.qasm"

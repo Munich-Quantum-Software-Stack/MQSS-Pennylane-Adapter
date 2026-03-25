@@ -180,9 +180,6 @@ class TestPennylaneJobs(TestPennylaneAdapter):
 
         monkeypatch.setattr(MQSSClient, "wait_for_job_result", mock_job_result)
 
-    @pytest.mark.parametrize(
-        "params", [[np.pi / 3, np.pi / 17], [np.pi * 13 / 12, np.pi / 8]]
-    )
     def test_compare_runs(
         monkeypatch: pytest.MonkeyPatch, params: list[float], method: str = "hellinger"
     ) -> bool:
@@ -197,9 +194,6 @@ class TestPennylaneJobs(TestPennylaneAdapter):
         result = quantum_function_expval(*params)
         assert result is not None
 
-    @pytest.mark.parametrize(
-        "params", [[np.pi / 3, np.pi / 17], [np.pi * 13 / 12, np.pi / 8]]
-    )
     def test_compare_runs_single_pauli(
         monkeypatch: pytest.MonkeyPatch, params: list[float], method: str = "hellinger"
     ) -> bool:
@@ -214,7 +208,6 @@ class TestPennylaneJobs(TestPennylaneAdapter):
         result = quantum_function_expval_single_pauli(*params)
         assert result is not None
 
-    @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
     def _test_compare_generated_circuits(params: list[float]) -> bool:
         """Compare the runs done on LRZ backend with ideal simulations.
 
