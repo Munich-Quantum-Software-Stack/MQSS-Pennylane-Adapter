@@ -84,7 +84,7 @@ class MQSSPennylaneDevice(Device):
             )
             decomposed.append(decomposed_tape)
         circuits = decomposed
-        '''
+        """
         for tape in circuits:
             try:
                 self.validate_tape_operations(tape)
@@ -92,7 +92,7 @@ class MQSSPennylaneDevice(Device):
                 print(
                     f"Skipping tape due to error in validating operations, original exception: {e}"
                 )
-        '''
+        """
 
         if isinstance(tape.measurements[0], qml.measurements.ExpectationMP):
             if isinstance(tape.measurements[0].obs, qml.ops.op_math.LinearCombination):
@@ -114,6 +114,7 @@ class MQSSPennylaneDevice(Device):
         measurement = self.calculate_measurement_type(
             counts, circuits, shots, is_hamiltonian
         )
+
         return [measurement]
 
     def create_batch_circuits_for_hamiltonians(
@@ -176,34 +177,40 @@ class MQSSPennylaneDevice(Device):
         elif type(circuits[0].measurements[0]).__name__ == "ExpectationMP":
             final_expectation = 0
             for cdx, count in enumerate(counts):
-                if is_hamiltonian:
-                    measured_qubits = [
-                        op.wires.labels[0]
-                        for op in circuits[cdx]._measurements[0].obs.base
-                    ]
-                else:
+                measurement = circuits[cdx].measurements[0]
+                observable = getattr(measurement, "obs", None)
 
-                    if isinstance(
-                        circuits[cdx]._measurements[0].obs,
-                        (qml.PauliX, qml.PauliY, qml.PauliZ),
-                    ):
-                        measured_qubits = [
-                            circuits[cdx]._measurements[0].obs.wires.labels[0]
-                        ]
+                if is_hamiltonian:
+                    if observable is None:
+                        measured_qubits = list(measurement.wires.labels)
                     else:
-                        measured_qubits = [
-                            op.wires.labels[0]
-                            for op in circuits[cdx]._measurements[0].obs
-                        ]
+                        base_observable = getattr(observable, "base", observable)
+                        if hasattr(base_observable, "operands"):
+                            obs_terms = base_observable.operands
+                        else:
+                            obs_terms = [base_observable]
+
+                        measured_qubits = [op.wires.labels[0] for op in obs_terms]
+                else:
+                    if observable is None:
+                        measured_qubits = list(measurement.wires.labels)
+                    else:
+                        if isinstance(observable, (qml.PauliX, qml.PauliY, qml.PauliZ)):
+                            measured_qubits = [observable.wires.labels[0]]
+                        elif hasattr(observable, "operands"):
+                            measured_qubits = [
+                                op.wires.labels[0] for op in observable.operands
+                            ]
+                        else:
+                            measured_qubits = [observable.wires.labels[0]]
 
                 num_qubits = len(circuits[cdx].wires)
                 expectation = self.get_expectation_value(
                     count, measured_qubits, num_qubits, shots
                 )
                 if is_hamiltonian:
-                    final_expectation += (
-                        expectation * circuits[cdx]._measurements[0].obs.scalar
-                    )
+                    coeff = getattr(observable, "scalar", 1)
+                    final_expectation += expectation * coeff
                 else:
                     final_expectation += expectation
             return final_expectation
@@ -230,16 +237,18 @@ class MQSSPennylaneDevice(Device):
         for idx, value in enumerate(count):
             try:
                 bitstring = int2bit(idx, num_qubits)
-                eigenvalue = 1.0
-                for bdx in measured_qubits:
-                    if bitstring[bdx] == "1":
-                        eigenvalue *= -1
-                expectation += value * eigenvalue
+                for bdx, bit in enumerate(bitstring):
+                    weighted_count = value
+                    if bdx in measured_qubits:
+                        if bit == "1":
+                            weighted_count *= -1
+                        expectation += weighted_count
 
             except ValueError as e:
                 raise ValueError(
                     f"Number of wires must be defined for expectation value calculation, original error: {e}"
                 )
+        expectation /= shots
         expectation /= shots
         return expectation
 
