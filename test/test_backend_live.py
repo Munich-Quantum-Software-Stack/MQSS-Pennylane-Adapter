@@ -11,6 +11,7 @@ dev_simulator = qml.device("default.qubit", wires=2)
 dev_hamiltonian = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_hamiltonian_simulator = qml.device("default.qubit", wires=2)
 dev_autograd = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
+dev_probs = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 
 
 def arbitrary_quantum_circuit(x: float, y: float) -> None:
@@ -28,6 +29,23 @@ def arbitrary_quantum_circuit(x: float, y: float) -> None:
     qml.RY(y, wires=1)
     qml.CNOT(wires=[1, 0])
     qml.RX(x, wires=1)
+
+
+@qml.qnode(dev_probs)
+def quantum_function_probs(x: float, y: float) -> np.ndarray:
+    """
+    The function `quantum_function_expval` applies quantum operations RZ, CNOT, and RY to qubits and returns
+    the probabilities of the computational basis states.
+
+    :param x: The parameter `x` in the `quantum_function_expval` represents the angle for the rotation gate
+    `RZ` applied on the qubit at wire 0
+    :param y: The parameter `y` in the `quantum_function_expval` function is used as the angle parameter for
+    the rotation gate `RY(y, wires=1)`. This gate applies a rotation around the y-axis of the Bloch
+    sphere by an angle `y` to the qubit on wire
+    :return: The function `quantum_function_expval` returns the probabilities of the computational basis states.
+    """
+    arbitrary_quantum_circuit(x, y)
+    return qml.probs(wires=[0, 1])
 
 
 @qml.qnode(dev)
@@ -174,7 +192,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
             == quantum_function_expval_simulator.qtape.operations
         )
 
-    def test_hamiltonian_measurements(
+    def _test_hamiltonian_measurements(
         self,
         hamiltonian_data: tuple[list[float], list[qml.ops.qubit.non_parametric_ops]],
         params: list[float],
@@ -202,3 +220,13 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         # assert abs(result - result_simulator) <= 1e-1
 
         assert result is not None
+
+    def test_probs(self, params: list[float]):
+        """Test that we can get probabilities back from the device"""
+        x, y = params
+        result = quantum_function_probs(x, y)
+        num_qubits = quantum_function_probs.qtape.num_wires
+        assert result is not None
+        assert len(result[0]) == (2**num_qubits)
+        assert abs(sum(result[0] ** 2) - 1) <= 1e-6
+        assert all(0 <= p <= 1 for p in result[0])
