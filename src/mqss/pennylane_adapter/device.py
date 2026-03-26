@@ -76,6 +76,15 @@ class MQSSPennylaneDevice(Device):
         adapter = MQSSPennylaneAdapter(token=self.TOKEN, url=MQSS_URL)
         backend = adapter.get_backend(self.BACKENDS)
         is_hamiltonian = False
+        decomposed = []
+        for tape in circuits:
+            [decomposed_tape], _ = qml.transforms.decompose(
+                tape,
+                gate_set=supports_operation,
+            )
+            decomposed.append(decomposed_tape)
+        circuits = decomposed
+        '''
         for tape in circuits:
             try:
                 self.validate_tape_operations(tape)
@@ -83,6 +92,7 @@ class MQSSPennylaneDevice(Device):
                 print(
                     f"Skipping tape due to error in validating operations, original exception: {e}"
                 )
+        '''
 
         if isinstance(tape.measurements[0], qml.measurements.ExpectationMP):
             if isinstance(tape.measurements[0].obs, qml.ops.op_math.LinearCombination):
@@ -192,7 +202,7 @@ class MQSSPennylaneDevice(Device):
                 )
                 if is_hamiltonian:
                     final_expectation += (
-                        expectation * circuits[0]._measurements[0].obs.scalar
+                        expectation * circuits[cdx]._measurements[0].obs.scalar
                     )
                 else:
                     final_expectation += expectation
@@ -220,18 +230,17 @@ class MQSSPennylaneDevice(Device):
         for idx, value in enumerate(count):
             try:
                 bitstring = int2bit(idx, num_qubits)
-                for bdx, bit in enumerate(bitstring):
-                    weighted_count = value
-                    if bdx in measured_qubits:
-                        if bit == "1":
-                            weighted_count *= -1
-                        expectation += weighted_count
-                expectation /= shots
+                eigenvalue = 1.0
+                for bdx in measured_qubits:
+                    if bitstring[bdx] == "1":
+                        eigenvalue *= -1
+                expectation += value * eigenvalue
 
             except ValueError as e:
                 raise ValueError(
                     f"Number of wires must be defined for expectation value calculation, original error: {e}"
                 )
+        expectation /= shots
         return expectation
 
     def append_measurement_gates(
