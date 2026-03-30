@@ -249,7 +249,7 @@ class MQSSPennylaneDevice(Device):
                     f"Number of wires must be defined for expectation value calculation, original error: {e}"
                 )
         expectation /= shots
-        expectation /= shots
+
         return expectation
 
     def append_measurement_gates(
