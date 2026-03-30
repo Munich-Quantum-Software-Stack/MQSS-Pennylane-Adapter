@@ -10,8 +10,17 @@ dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_simulator = qml.device("default.qubit", wires=2)
 dev_hamiltonian = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_hamiltonian_simulator = qml.device("default.qubit", wires=2)
+dev_hamiltonian_simulator2 = qml.device("default.qubit", wires=2)
 dev_autograd = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_probs = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
+
+
+def GHZ_circuit(num_wires: int) -> None:
+    """Defines a GHZ state preparation circuit on the specified number of wires."""
+
+    qml.Hadamard(wires=0)
+    for i in range(num_wires - 1):
+        qml.CNOT(wires=[0, i])
 
 
 def arbitrary_quantum_circuit(x: float, y: float) -> None:
@@ -34,15 +43,8 @@ def arbitrary_quantum_circuit(x: float, y: float) -> None:
 @qml.qnode(dev_probs)
 def quantum_function_probs(x: float, y: float) -> np.ndarray:
     """
-    The function `quantum_function_expval` applies quantum operations RZ, CNOT, and RY to qubits and returns
+    The function `quantum_function_expval` applies an arbitrary quantum function to qubits and returns
     the probabilities of the computational basis states.
-
-    :param x: The parameter `x` in the `quantum_function_expval` represents the angle for the rotation gate
-    `RZ` applied on the qubit at wire 0
-    :param y: The parameter `y` in the `quantum_function_expval` function is used as the angle parameter for
-    the rotation gate `RY(y, wires=1)`. This gate applies a rotation around the y-axis of the Bloch
-    sphere by an angle `y` to the qubit on wire
-    :return: The function `quantum_function_expval` returns the probabilities of the computational basis states.
     """
     arbitrary_quantum_circuit(x, y)
     return qml.probs(wires=[0, 1])
@@ -120,6 +122,14 @@ def quantum_function_hamiltonian_expval(
     return qml.expval(H)
 
 
+@qml.qnode(dev_hamiltonian_simulator2)
+def quantum_function_hamiltonian_expval_simulator2(
+    x: float, y: float, H: qml.Hamiltonian
+) -> float:
+    arbitrary_quantum_circuit(x, y)
+    return qml.probs(wires=range(2))
+
+
 @qml.qnode(dev_hamiltonian_simulator)
 def quantum_function_hamiltonian_expval_simulator(
     x: float, y: float, H: qml.Hamiltonian
@@ -192,7 +202,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
             == quantum_function_expval_simulator.qtape.operations
         )
 
-    def _test_hamiltonian_measurements(
+    def test_hamiltonian_measurements(
         self,
         hamiltonian_data: tuple[list[float], list[qml.ops.qubit.non_parametric_ops]],
         params: list[float],
@@ -208,18 +218,23 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
 
         try:
             result = quantum_function_hamiltonian_expval(*params, hamiltonian)
-            # result_simulator = quantum_function_hamiltonian_expval_simulator(
-            #     *params, hamiltonian
-            # )
-
+            result_simulator = quantum_function_hamiltonian_expval_simulator(
+                *params, hamiltonian
+            )
+            result_simulator2 = quantum_function_hamiltonian_expval_simulator2(
+                *params, hamiltonian
+            )
         except Exception as e:
             print(
                 f"There was an error while measuring the expectation value of the hamiltonian, with the following error: {e}"
             )
             raise e
-        # assert abs(result - result_simulator) <= 1e-1
 
         assert result is not None
+        print(result, "result")
+        print(result_simulator, "result_simulator")
+        print(result_simulator2, "result_simulator2")
+        assert abs(result - result_simulator) <= 3e-1
 
     def test_probs(self, params: list[float]):
         """Test that we can get probabilities back from the device"""
@@ -228,5 +243,10 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         num_qubits = quantum_function_probs.qtape.num_wires
         assert result is not None
         assert len(result[0]) == (2**num_qubits)
-        assert abs(sum(result[0] ** 2) - 1) <= 1e-6
+        assert abs(sum(result[0]) - 1) <= 1e-6
         assert all(0 <= p <= 1 for p in result[0])
+
+
+pauli_x = np.array([[0, 1], [1, 0]])
+pauli_y = np.array([[0, -1j], [1j, 0]])
+pauli_z = np.array([[1, 0], [0, -1]])

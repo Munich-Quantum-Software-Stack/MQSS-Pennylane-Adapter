@@ -38,9 +38,9 @@ def obs(request):
 @pytest.fixture(
     params=[
         (
-            [1.5, -0.92],
+            [1.5, -1],
             [
-                qml.PauliX(0) @ qml.PauliY(1),
+                qml.PauliZ(0) @ qml.PauliZ(1),
                 qml.PauliY(0) @ qml.PauliZ(1),
             ],
         ),

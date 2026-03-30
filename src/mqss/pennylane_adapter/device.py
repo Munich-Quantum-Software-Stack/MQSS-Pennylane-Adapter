@@ -173,7 +173,7 @@ class MQSSPennylaneDevice(Device):
 
         """
         if type(circuits[0].measurements[0]).__name__ == "ProbabilityMP":
-            return [np.sqrt(counts[0] / shots)]
+            return [counts[0] / shots]
         elif type(circuits[0].measurements[0]).__name__ == "ExpectationMP":
             final_expectation = 0
             for cdx, count in enumerate(counts):
