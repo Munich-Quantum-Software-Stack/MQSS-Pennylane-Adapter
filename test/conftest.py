@@ -22,12 +22,8 @@ def coeffs():
 
 @pytest.fixture(
     params=[
-        [
-            qml.PauliX(0) @ qml.PauliY(1),
-            qml.PauliY(0) @ qml.PauliZ(1),
-        ],
-        [qml.PauliZ(0) @ qml.PauliX(1)],
-        [qml.PauliZ(0)],
+        qml.PauliZ(0) @ qml.PauliX(1),
+        qml.PauliZ(0),
     ]
 )
 def obs(request):
