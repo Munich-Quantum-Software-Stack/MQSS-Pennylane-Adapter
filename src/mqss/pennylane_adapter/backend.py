@@ -1,5 +1,6 @@
 from .job import MQPJob
 from typing import List, Optional, Union
+import pennylane as qml
 from qiskit.transpiler import CouplingMap, Target
 from pennylane.tape import QuantumTape, QuantumScript
 
@@ -73,9 +74,9 @@ class MQSSPennylaneBackend(BackendV2):
             MQPJob: Returns the MQPJob object
         """
         if isinstance(run_input, QuantumTape) or isinstance(run_input, QuantumScript):
-            _circuits = str([run_input.to_openqasm(rotations=False)])
+            _circuits = str([qml.to_openqasm(run_input, rotations=False)])
         else:
-            _circuits = str([qc.to_openqasm(rotations=False) for qc in run_input])
+            _circuits = str([qml.to_openqasm(qc, rotations=False) for qc in run_input])
         _circuit_format = "qasm"
 
         job_request = CircuitJobRequest(

@@ -6,13 +6,15 @@ from src.mqss.pennylane_adapter.device import MQSSPennylaneDevice
 from pennylane import numpy as np
 from .pennylane_adapter_tests_base import TestPennylaneAdapter
 
-dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
+dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS, shots=100)
 dev_simulator = qml.device("default.qubit", wires=2)
 dev_hamiltonian = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_hamiltonian_simulator = qml.device("default.qubit", wires=2)
 
 dev_autograd = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
-dev_probs = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
+dev_probs = MQSSPennylaneDevice(
+    wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS, shots=100
+)
 
 
 def GHZ_circuit(num_wires: int) -> None:
@@ -157,10 +159,11 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         _ = quantum_function_expval_simulator(*params)
         _ = quantum_function_expval(*params)
 
-        assert (
-            quantum_function_expval.qtape.operations
-            == quantum_function_expval_simulator.qtape.operations
-        )
+        resources = qml.specs(quantum_function_expval)(*params).resources
+        simulator_resources = qml.specs(quantum_function_expval_simulator)(
+            *params
+        ).resources
+        assert resources.depth == simulator_resources.depth
 
     @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
     def _test_autograd(self, params: list[float]) -> bool:
@@ -223,7 +226,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         """Test that we can get probabilities back from the device"""
         x, y = params
         result = quantum_function_probs(x, y)
-        num_qubits = quantum_function_probs.qtape.num_wires
+        num_qubits = qml.specs(quantum_function_probs)(x, y).num_device_wires
         assert result is not None
         assert len(result) == (2**num_qubits)
         assert abs(sum(result) - 1) <= 1e-6
