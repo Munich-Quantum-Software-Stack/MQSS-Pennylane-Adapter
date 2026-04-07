@@ -252,13 +252,14 @@ class MQSSPennylaneDevice(Device):
                             measured_qubits = [observable.wires.labels]
                         else:
                             measured_qubits = [observable.wires.labels[0]]
-
-                num_qubits = len(circuits[0].wires)
+                if isinstance(circuits, list):
+                    num_qubits = len(circuits[0].wires)
+                else:
+                    num_qubits = len(circuits.wires)
                 expectation = self.get_expectation_value(
                     count, measured_qubits[cdx], num_qubits, shots
                 )
                 if is_hamiltonian:
-
                     final_expectation += expectation * observable.coeffs[cdx]
                 else:
                     final_expectation += expectation
