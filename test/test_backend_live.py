@@ -10,7 +10,7 @@ dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_simulator = qml.device("default.qubit", wires=2)
 dev_hamiltonian = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_hamiltonian_simulator = qml.device("default.qubit", wires=2)
-dev_hamiltonian_simulator2 = qml.device("default.qubit", wires=2)
+
 dev_autograd = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_probs = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 
@@ -20,7 +20,7 @@ def GHZ_circuit(num_wires: int) -> None:
 
     qml.Hadamard(wires=0)
     for i in range(num_wires - 1):
-        qml.CNOT(wires=[0, i])
+        qml.CNOT(wires=[0, i + 1])
 
 
 def arbitrary_quantum_circuit(x: float, y: float) -> None:
@@ -122,14 +122,6 @@ def quantum_function_hamiltonian_expval(
     return qml.expval(H)
 
 
-@qml.qnode(dev_hamiltonian_simulator2)
-def quantum_function_hamiltonian_expval_simulator2(
-    x: float, y: float, H: qml.Hamiltonian
-) -> float:
-    arbitrary_quantum_circuit(x, y)
-    return qml.probs(wires=range(2))
-
-
 @qml.qnode(dev_hamiltonian_simulator)
 def quantum_function_hamiltonian_expval_simulator(
     x: float, y: float, H: qml.Hamiltonian
@@ -188,7 +180,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         )
 
     def test_expectation_value_measurements(
-        self, obs: list[qml.ops.qubit.non_parametric_ops], params: list[float]
+        self, obs: qml.ops.qubit.non_parametric_ops, params: list[float]
     ):
         """Run a quantum circuit with an expectation value measurement and compare the results with the simulator."""
 

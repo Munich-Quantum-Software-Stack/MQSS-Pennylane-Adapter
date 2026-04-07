@@ -2,7 +2,7 @@ from pennylane.devices import Device, DefaultExecutionConfig
 from pennylane.tape import QuantumScriptOrBatch
 
 from pennylane import numpy as np
-from pennylane.typing import TensorLike, Result, ResultBatch
+from pennylane.typing import TensorLike
 from typing import Union, Tuple
 import copy
 import pennylane as qml
@@ -80,18 +80,21 @@ class MQSSPennylaneDevice(Device):
         Returns:
             MeasurementType: The type of measurement in the tape
         """
-        if type(circuit._measurements[0]).__name__ == "ProbabilityMP":
+        if not circuit.measurements:
+            return MeasurementType.UNKNOWN
+        measurement = circuit.measurements[0]
+        if isinstance(measurement, qml.measurements.ProbabilityMP):
             return MeasurementType.PROBS
-        elif type(circuit._measurements[0]).__name__ == "ExpectationMP":
-            if isinstance(
-                circuit._measurements[0].obs, qml.ops.op_math.LinearCombination
-            ):
+
+        elif isinstance(measurement, qml.measurements.ExpectationMP):
+            if isinstance(measurement.obs, qml.ops.op_math.LinearCombination):
                 return MeasurementType.EXPVAL_HAMILTONIAN
             else:
                 return MeasurementType.EXPVAL
-        elif type(circuit._measurements[0]).__name__ == "SampleMP":
+
+        elif isinstance(measurement, qml.measurements.SampleMP):
             return MeasurementType.SAMPLE
-        elif type(circuit._measurements[0]).__name__ == "StateMP":
+        elif isinstance(measurement, qml.measurements.StateMP):
             return MeasurementType.STATE
         else:
             return MeasurementType.UNKNOWN
@@ -226,6 +229,7 @@ class MQSSPennylaneDevice(Device):
             self.measurement_type == MeasurementType.EXPVAL
             or self.measurement_type == MeasurementType.EXPVAL_HAMILTONIAN
         ):
+
             final_expectation = 0
             for cdx, count in enumerate(counts):
                 if self.batch_circuits:
@@ -270,6 +274,12 @@ class MQSSPennylaneDevice(Device):
                 else:
                     final_expectation += expectation
             return [final_expectation]
+        elif self.measurement_type == MeasurementType.SAMPLE:
+            raise NotImplementedError
+        elif self.measurement_type == MeasurementType.STATE:
+            raise NotImplementedError
+        else:
+            raise ValueError("Unknown measurement type")
 
     def get_expectation_value(
         self,
@@ -346,8 +356,8 @@ class MQSSPennylaneDevice(Device):
         return circuits
 
     def fetch_counts(
-        self, counts: Union[Result, ResultBatch], shots: int
-    ) -> list[Result]:
+        self, counts: dict[str, int] | list[dict[str, int]], shots: int
+    ) -> list[dict[str, int] | list[dict[str, int]]]:
         """Given a dictionary representing the measurements, return the probability distribution as an array
 
         Args:
@@ -379,10 +389,10 @@ class MQSSPennylaneDevice(Device):
 
 
         Args:
-            bitstring (str): The input bitstring to be reversed.
+            counts (dict): The counts dictionary whose input bitstrings is to be reversed.
 
         Returns:
-            str: The reversed bitstring.
+            dict: The reversed bitstring.
         """
         reversed_counts = {}
         for count in zip(counts.keys(), counts.values()):
