@@ -154,7 +154,7 @@ def quantum_function_hamiltonian_expval_simulator(
 class TestPennylaneLiveJobs(TestPennylaneAdapter):
 
     @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
-    def _test_compare_generated_circuits(self, params: list[float]) -> bool:
+    def test_compare_generated_circuits(self, params: list[float]) -> bool:
         """Compare the runs done on LRZ backend with ideal simulations.
 
         Args:
@@ -181,7 +181,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         """
 
         results = qml.gradients.param_shift(quantum_function_autograd)(*params)
-        print(results)
+        assert results is not None
         assert (
             quantum_function_expval.qtape.operations
             == quantum_function_expval_simulator.qtape.operations
@@ -217,9 +217,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
             result_simulator = quantum_function_hamiltonian_expval_simulator(
                 *params, hamiltonian
             )
-            result_simulator2 = quantum_function_hamiltonian_expval_simulator2(
-                *params, hamiltonian
-            )
+
         except Exception as e:
             print(
                 f"There was an error while measuring the expectation value of the hamiltonian, with the following error: {e}"
@@ -227,9 +225,6 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
             raise e
 
         assert result is not None
-        print(result, "result")
-        print(result_simulator, "result_simulator")
-        print(result_simulator2, "result_simulator2")
         assert abs(result - result_simulator) <= 3e-1
 
     def test_probs(self, params: list[float]):
@@ -238,6 +233,6 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         result = quantum_function_probs(x, y)
         num_qubits = quantum_function_probs.qtape.num_wires
         assert result is not None
-        assert len(result[0]) == (2**num_qubits)
-        assert abs(sum(result[0]) - 1) <= 1e-6
-        assert all(0 <= p <= 1 for p in result[0])
+        assert len(result) == (2**num_qubits)
+        assert abs(sum(result) - 1) <= 1e-6
+        assert all(0 <= p <= 1 for p in result)

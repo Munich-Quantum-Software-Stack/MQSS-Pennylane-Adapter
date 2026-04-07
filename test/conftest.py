@@ -14,12 +14,6 @@ def params(request):
     return request.param
 
 
-@pytest.fixture
-def coeffs():
-    """Shared Hamiltonian coefficients for testing."""
-    return [1.5, -0.92]
-
-
 @pytest.fixture(
     params=[
         qml.PauliZ(0) @ qml.PauliX(1),
