@@ -112,6 +112,7 @@ class MQSSPennylaneDevice(Device):
         Returns:
             TensorLike: Measurement results
         """
+        self.batch_circuits = False
         if isinstance(circuits, list):
             self.batch_circuits = True
 
@@ -179,8 +180,10 @@ class MQSSPennylaneDevice(Device):
             batched_circuits.append(modified_circuit)
         if len(batched_circuits) > 1:
             self.batch_circuits = True
+
         else:
             batched_circuits = batched_circuits[0]
+
         return batched_circuits
 
     def validate_tape_operations(self, tape: QuantumScriptOrBatch):
@@ -225,7 +228,7 @@ class MQSSPennylaneDevice(Device):
         ):
             final_expectation = 0
             for cdx, count in enumerate(counts):
-                if is_hamiltonian:
+                if self.batch_circuits:
                     measurement = circuits[0].measurements[0]
                 else:
                     measurement = circuits.measurements[0]
@@ -252,10 +255,13 @@ class MQSSPennylaneDevice(Device):
                             measured_qubits = [observable.wires.labels]
                         else:
                             measured_qubits = [observable.wires.labels[0]]
-                if isinstance(circuits, list):
+
+                if self.batch_circuits:
+
                     num_qubits = len(circuits[0].wires)
                 else:
                     num_qubits = len(circuits.wires)
+
                 expectation = self.get_expectation_value(
                     count, measured_qubits[cdx], num_qubits, shots
                 )
