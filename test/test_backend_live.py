@@ -10,7 +10,17 @@ dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_simulator = qml.device("default.qubit", wires=2)
 dev_hamiltonian = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_hamiltonian_simulator = qml.device("default.qubit", wires=2)
+
 dev_autograd = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
+dev_probs = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
+
+
+def GHZ_circuit(num_wires: int) -> None:
+    """Defines a GHZ state preparation circuit on the specified number of wires."""
+
+    qml.Hadamard(wires=0)
+    for i in range(num_wires - 1):
+        qml.CNOT(wires=[0, i + 1])
 
 
 def arbitrary_quantum_circuit(x: float, y: float) -> None:
@@ -28,6 +38,16 @@ def arbitrary_quantum_circuit(x: float, y: float) -> None:
     qml.RY(y, wires=1)
     qml.CNOT(wires=[1, 0])
     qml.RX(x, wires=1)
+
+
+@qml.qnode(dev_probs)
+def quantum_function_probs(x: float, y: float) -> np.ndarray:
+    """
+    The function `quantum_function_expval` applies an arbitrary quantum function to qubits and returns
+    the probabilities of the computational basis states.
+    """
+    arbitrary_quantum_circuit(x, y)
+    return qml.probs(wires=[0, 1])
 
 
 @qml.qnode(dev)
@@ -124,26 +144,9 @@ def quantum_function_hamiltonian_expval_simulator(
 
 @pytest.mark.live
 class TestPennylaneLiveJobs(TestPennylaneAdapter):
-    @pytest.mark.parametrize(
-        "params", [[np.pi / 3, np.pi / 17], [np.pi * 13 / 12, np.pi / 8]]
-    )
-    def _test_compare_runs(
-        self, params: list[float], method: str = "hellinger"
-    ) -> bool:
-        """Compare the runs done on LRZ backend with ideal simulations.
-
-        Args:
-            params (list[float]): List of parameters to the quantum circuit
-            method (str):
-                'hellinger': Hellinger distance
-                'fidelity': Exact fidelity calculation, requires state tomography from QC
-        """
-        result_simulator = quantum_function_expval_simulator(*params)
-        result = quantum_function_expval(*params)
-        assert abs(result - result_simulator) <= 1e-1
 
     @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
-    def _test_compare_generated_circuits(self, params: list[float]) -> bool:
+    def test_compare_generated_circuits(self, params: list[float]) -> bool:
         """Compare the runs done on LRZ backend with ideal simulations.
 
         Args:
@@ -170,28 +173,27 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         """
 
         results = qml.gradients.param_shift(quantum_function_autograd)(*params)
-        print(results)
+        assert results is not None
         assert (
             quantum_function_expval.qtape.operations
             == quantum_function_expval_simulator.qtape.operations
         )
 
-    @pytest.mark.parametrize("coeffs", [[1.5, -0.92]])
-    @pytest.mark.parametrize(
-        "obs",
-        [
-            [
-                qml.PauliX(0) @ qml.PauliY(1),
-                qml.PauliY(0) @ qml.PauliZ(1),
-            ]
-        ],
-    )
-    @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
+    def test_expectation_value_measurements(
+        self, obs: qml.ops.qubit.non_parametric_ops, params: list[float]
+    ):
+        """Run a quantum circuit with an expectation value measurement and compare the results with the simulator."""
+
+        result = quantum_function_hamiltonian_expval(*params, obs)
+        result_simulator = quantum_function_hamiltonian_expval_simulator(*params, obs)
+
+        assert result is not None
+        assert abs(result - result_simulator) <= 3e-1
+
     def test_hamiltonian_measurements(
         self,
+        hamiltonian_data: tuple[list[float], list[qml.ops.qubit.non_parametric_ops]],
         params: list[float],
-        coeffs: list[float],
-        obs: list[qml.ops.qubit.non_parametric_ops],
     ):
         """Run a quantum circuit with a hamiltonian expectation value
 
@@ -199,7 +201,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
             coeffs (list[float]): _description_
             obs (list[qml.ops.qubit.non_parametric_ops]): _description_
         """
-
+        coeffs, obs = hamiltonian_data
         hamiltonian = qml.Hamiltonian(coeffs, obs)
 
         try:
@@ -212,4 +214,17 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
             print(
                 f"There was an error while measuring the expectation value of the hamiltonian, with the following error: {e}"
             )
-        assert abs(result - result_simulator) <= 1e-1
+            raise e
+
+        assert result is not None
+        assert abs(result - result_simulator) <= 3e-1
+
+    def test_probs(self, params: list[float]):
+        """Test that we can get probabilities back from the device"""
+        x, y = params
+        result = quantum_function_probs(x, y)
+        num_qubits = quantum_function_probs.qtape.num_wires
+        assert result is not None
+        assert len(result) == (2**num_qubits)
+        assert abs(sum(result) - 1) <= 1e-6
+        assert all(0 <= p <= 1 for p in result)

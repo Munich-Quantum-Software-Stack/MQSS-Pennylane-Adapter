@@ -2,11 +2,10 @@ from pennylane.devices import Device, DefaultExecutionConfig
 from pennylane.tape import QuantumScriptOrBatch
 
 from pennylane import numpy as np
-from pennylane.typing import TensorLike, Result, ResultBatch
-from typing import Union
+from pennylane.typing import TensorLike
+from typing import Union, Tuple
 import copy
 import pennylane as qml
-
 from mqss.pennylane_adapter.adapter import MQSSPennylaneAdapter
 from mqss.pennylane_adapter.config import MQSS_URL
 from .utils import (
@@ -14,6 +13,17 @@ from .utils import (
     bit2int,
     supports_operation,
 )
+
+from enum import Enum, auto
+
+
+class MeasurementType(Enum):
+    PROBS = auto()
+    EXPVAL = auto()
+    EXPVAL_HAMILTONIAN = auto()
+    SAMPLE = auto()
+    STATE = auto()
+    UNKNOWN = auto()
 
 
 class MQSSPennylaneDevice(Device):
@@ -56,10 +66,42 @@ class MQSSPennylaneDevice(Device):
         super().__init__(wires=wires, shots=shots)
         self.TOKEN = token
         self.BACKENDS = backends
+        self.measurement_type: MeasurementType = MeasurementType.UNKNOWN
+        self.batch_circuits: bool = False
+
+    def determine_measurement_type(
+        self, circuit: QuantumScriptOrBatch
+    ) -> MeasurementType:
+        """Determines the measurement type of the given tape.
+
+        Args:
+            tape (QuantumScriptOrBatch): Pennylane circuit
+
+        Returns:
+            MeasurementType: The type of measurement in the tape
+        """
+        if not circuit.measurements:
+            return MeasurementType.UNKNOWN
+        measurement = circuit.measurements[0]
+        if isinstance(measurement, qml.measurements.ProbabilityMP):
+            return MeasurementType.PROBS
+
+        elif isinstance(measurement, qml.measurements.ExpectationMP):
+            if isinstance(measurement.obs, qml.ops.op_math.LinearCombination):
+                return MeasurementType.EXPVAL_HAMILTONIAN
+            else:
+                return MeasurementType.EXPVAL
+
+        elif isinstance(measurement, qml.measurements.SampleMP):
+            return MeasurementType.SAMPLE
+        elif isinstance(measurement, qml.measurements.StateMP):
+            return MeasurementType.STATE
+        else:
+            return MeasurementType.UNKNOWN
 
     def execute(
         self,
-        circuits: QuantumScriptOrBatch,
+        circuits: Tuple[QuantumScriptOrBatch],
         execution_config: DefaultExecutionConfig,
         shots=1024,
     ) -> TensorLike:
@@ -73,42 +115,45 @@ class MQSSPennylaneDevice(Device):
         Returns:
             TensorLike: Measurement results
         """
+        self.batch_circuits = False
+        if isinstance(circuits, list):
+            self.batch_circuits = True
+
+        circuit = circuits[0]
+        self.measurement_type = self.determine_measurement_type(circuit)
         adapter = MQSSPennylaneAdapter(token=self.TOKEN, url=MQSS_URL)
         backend = adapter.get_backend(self.BACKENDS)
         is_hamiltonian = False
-        for tape in circuits:
-            try:
-                self.validate_tape_operations(tape)
-            except ValueError as e:
-                print(
-                    f"Skipping tape due to error in validating operations, original exception: {e}"
-                )
 
-        if isinstance(tape.measurements[0], qml.measurements.ExpectationMP):
-            if isinstance(tape.measurements[0].obs, qml.ops.op_math.LinearCombination):
+        circuit, _ = qml.transforms.decompose(
+            circuit,
+            gate_set=supports_operation,
+        )
+        circuit = circuit[0]
+
+        if (
+            self.measurement_type == MeasurementType.EXPVAL_HAMILTONIAN
+            or self.measurement_type == MeasurementType.EXPVAL
+        ):
+            if isinstance(
+                circuit.measurements[0].obs, qml.ops.op_math.LinearCombination
+            ):
                 is_hamiltonian = True
-                circuits = self.create_batch_circuits_for_hamiltonians(
-                    circuits[0], is_hamiltonian
-                )
-                is_hamiltonian = True
-            elif isinstance(tape.measurements[0].obs, qml.ops.op_math.Prod):
-                circuits = self.create_batch_circuits_for_hamiltonians(
-                    circuits[0], is_hamiltonian
-                )
+            circuit = self.create_batch_circuits_for_hamiltonians(
+                circuit, is_hamiltonian
+            )
 
-        job = backend.run(circuits, shots=shots)
-
+        job = backend.run(circuit, shots=shots)
         result = job.result()
-        counts = self.fetch_counts(result, shots)
 
         measurement = self.calculate_measurement_type(
-            counts, circuits, shots, is_hamiltonian
+            result, circuit, shots, is_hamiltonian
         )
-        return [measurement]
+        return measurement
 
     def create_batch_circuits_for_hamiltonians(
-        self, tape: QuantumScriptOrBatch, is_hamiltonian: bool
-    ) -> list[QuantumScriptOrBatch]:
+        self, circuit: QuantumScriptOrBatch, is_hamiltonian: bool
+    ) -> Union[list[QuantumScriptOrBatch], QuantumScriptOrBatch]:
         """Creates a batched job where there is a Hamiltonian expectation value calculation as measurement
 
         Args:
@@ -119,17 +164,28 @@ class MQSSPennylaneDevice(Device):
             list[QuantumScriptOrBatch]: Batch of circuits for each term in the Hamiltonian
 
         """
+        if (
+            self.measurement_type != MeasurementType.EXPVAL_HAMILTONIAN
+            and self.measurement_type != MeasurementType.EXPVAL
+        ):
+            return circuit
+
         batched_circuits = []
         if is_hamiltonian:
-            observables = tape._measurements[0].obs
+            observables = circuit.measurements[0].obs
         else:
-            observables = [tape._measurements[0].obs]
+            observables = [circuit.measurements[0].obs]
         for obs in observables:
             modified_circuit = self.append_measurement_gates(
-                copy.deepcopy(tape), obs, is_hamiltonian
+                copy.deepcopy(circuit), obs, is_hamiltonian
             )
-            modified_circuit._measurements = [qml.expval(obs)]
+            # modified_circuit.measurements = [qml.expval(obs)]
             batched_circuits.append(modified_circuit)
+        if len(batched_circuits) > 1:
+            self.batch_circuits = True
+
+        else:
+            batched_circuits = batched_circuits[0]
 
         return batched_circuits
 
@@ -147,11 +203,11 @@ class MQSSPennylaneDevice(Device):
 
     def calculate_measurement_type(
         self,
-        counts: TensorLike,
+        result,
         circuits: QuantumScriptOrBatch,
         shots: int,
         is_hamiltonian: bool,
-    ) -> Union[list[TensorLike], list[float]]:
+    ) -> Union[list[TensorLike], Union[TensorLike, list[float]]]:
         """Given a measurement type (e.g. probs, exp. val.), return the measurement result.
 
         Args:
@@ -161,47 +217,74 @@ class MQSSPennylaneDevice(Device):
             is_hamiltonian (bool): Indicates if there is a hamiltonian expectation value calculation
 
         """
-        if type(circuits[0].measurements[0]).__name__ == "ProbabilityMP":
-            return [np.sqrt(counts[0] / shots)]
-        elif type(circuits[0].measurements[0]).__name__ == "ExpectationMP":
+
+        counts = self.fetch_counts(result.get_counts(), shots)
+        if self.measurement_type == MeasurementType.PROBS:
+
+            measurement = []
+            for count in counts:
+                measurement.append(count / shots)
+            return measurement
+        elif (
+            self.measurement_type == MeasurementType.EXPVAL
+            or self.measurement_type == MeasurementType.EXPVAL_HAMILTONIAN
+        ):
+
             final_expectation = 0
             for cdx, count in enumerate(counts):
-                if is_hamiltonian:
-                    measured_qubits = [
-                        op.wires.labels[0]
-                        for op in circuits[cdx]._measurements[0].obs.base
-                    ]
+                if self.batch_circuits:
+                    measurement = circuits[0].measurements[0]
                 else:
+                    measurement = circuits.measurements[0]
+                observable = getattr(measurement, "obs", None)
 
-                    if isinstance(
-                        circuits[cdx]._measurements[0].obs,
-                        (qml.PauliX, qml.PauliY, qml.PauliZ),
-                    ):
-                        measured_qubits = [
-                            circuits[cdx]._measurements[0].obs.wires.labels[0]
-                        ]
+                if is_hamiltonian:
+                    if observable is None:
+                        measured_qubits = list(measurement.wires.labels)
                     else:
-                        measured_qubits = [
-                            op.wires.labels[0]
-                            for op in circuits[cdx]._measurements[0].obs
-                        ]
+                        base_observable = getattr(observable, "base", observable)
+                        if hasattr(base_observable, "operands"):
+                            obs_terms = base_observable.operands
+                        else:
+                            obs_terms = [base_observable]
 
-                num_qubits = len(circuits[cdx].wires)
+                        measured_qubits = [op.wires.labels for op in obs_terms]
+                else:
+                    if observable is None:
+                        measured_qubits = list(measurement.wires.labels)
+                    else:
+                        if isinstance(observable, (qml.PauliX, qml.PauliY, qml.PauliZ)):
+                            measured_qubits = [tuple([observable.wires.labels[0]])]
+                        elif hasattr(observable, "operands"):
+                            measured_qubits = [observable.wires.labels]
+                        else:
+                            measured_qubits = [observable.wires.labels[0]]
+
+                if self.batch_circuits:
+
+                    num_qubits = len(circuits[0].wires)
+                else:
+                    num_qubits = len(circuits.wires)
+
                 expectation = self.get_expectation_value(
-                    count, measured_qubits, num_qubits, shots
+                    count, measured_qubits[cdx], num_qubits, shots
                 )
                 if is_hamiltonian:
-                    final_expectation += (
-                        expectation * circuits[0]._measurements[0].obs.scalar
-                    )
+                    final_expectation += expectation * observable.coeffs[cdx]
                 else:
                     final_expectation += expectation
-            return final_expectation
+            return [final_expectation]
+        elif self.measurement_type == MeasurementType.SAMPLE:
+            raise NotImplementedError
+        elif self.measurement_type == MeasurementType.STATE:
+            raise NotImplementedError
+        else:
+            raise ValueError("Unknown measurement type")
 
     def get_expectation_value(
         self,
         count: list[float],
-        measured_qubits: list[int],
+        measured_qubits: tuple[int],
         num_qubits: int,
         shots: int,
     ):
@@ -209,7 +292,7 @@ class MQSSPennylaneDevice(Device):
 
         Args:
             counts (list[float]): List of sampled measurements
-            measured_qubits (list[int]): The qubits involved in measurement process
+            measured_qubits (tuple[int]): The qubits involved in measurement process
             num_qubits (int): Number of circuits of the given circuit
             shots (int): Number of shots
 
@@ -218,20 +301,22 @@ class MQSSPennylaneDevice(Device):
         """
         expectation = 0.0
         for idx, value in enumerate(count):
+
             try:
+                weighted_count = 1
                 bitstring = int2bit(idx, num_qubits)
                 for bdx, bit in enumerate(bitstring):
-                    weighted_count = value
                     if bdx in measured_qubits:
                         if bit == "1":
                             weighted_count *= -1
-                        expectation += weighted_count
-                expectation /= shots
+                expectation += weighted_count * value
 
             except ValueError as e:
                 raise ValueError(
                     f"Number of wires must be defined for expectation value calculation, original error: {e}"
                 )
+        expectation /= shots
+
         return expectation
 
     def append_measurement_gates(
@@ -271,8 +356,8 @@ class MQSSPennylaneDevice(Device):
         return circuits
 
     def fetch_counts(
-        self, result: Union[Result, ResultBatch], shots: int
-    ) -> list[Result]:
+        self, counts: dict[str, int] | list[dict[str, int]], shots: int
+    ) -> list[dict[str, int] | list[dict[str, int]]]:
         """Given a dictionary representing the measurements, return the probability distribution as an array
 
         Args:
@@ -282,16 +367,36 @@ class MQSSPennylaneDevice(Device):
         Returns:
             probs (np.ndarray): The probability distribution of the measurements
         """
-        counts = result.get_counts()
+
         probs_list = []
         if not isinstance(counts, list):
             counts = [counts]
         for count in counts:
-            example_key = next(iter(count.keys()))
+            reversed_count = self.reverse_bit_order(count)
+            example_key = next(iter(reversed_count.keys()))
             qubit_length = len(example_key)
             probs = np.zeros(2**qubit_length, dtype=np.float64)
-            for count in zip(count.keys(), count.values()):
-                key, value = count
+            for count_id in zip(reversed_count.keys(), reversed_count.values()):
+                key, value = count_id
                 probs[bit2int(key)] = value
             probs_list.append(probs)
         return probs_list
+
+    def reverse_bit_order(self, counts: dict) -> dict:
+        """Reverse the order of bits in a bitstring.
+        Pennylane uses big-endian ending which contradicts with Qiskit's little-endian ordering, so we need to reverse the bit order when converting between the two formats.
+        This function takes a bitstring as input and returns the reversed bitstring.
+
+
+        Args:
+            counts (dict): The counts dictionary whose input bitstrings is to be reversed.
+
+        Returns:
+            dict: The reversed bitstring.
+        """
+        reversed_counts = {}
+        for count in zip(counts.keys(), counts.values()):
+            key, value = count
+            reversed_key = key[::-1]
+            reversed_counts[reversed_key] = value
+        return reversed_counts
