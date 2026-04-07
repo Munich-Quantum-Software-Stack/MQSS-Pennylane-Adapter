@@ -6,7 +6,7 @@ authors = [{ name = "mqss", email = "mqss@munich-quantum-valley.de" }]
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "pennylane>=0.39.0",
+    "pennylane>=0.44.0",
     "python-dotenv>=1.0.1",
     "qiskit>=1.2.4,<1.4.0",
     "requests>=2.32.3",
