@@ -153,21 +153,6 @@ def quantum_function_hamiltonian_expval_simulator(
 @pytest.mark.live
 class TestPennylaneLiveJobs(TestPennylaneAdapter):
 
-    def _test_compare_runs(
-        self, params: list[float], method: str = "hellinger"
-    ) -> bool:
-        """Compare the runs done on LRZ backend with ideal simulations.
-
-        Args:
-            params (list[float]): List of parameters to the quantum circuit
-            method (str):
-                'hellinger': Hellinger distance
-                'fidelity': Exact fidelity calculation, requires state tomography from QC
-        """
-        result_simulator = quantum_function_expval_simulator(*params)
-        result = quantum_function_expval(*params)
-        assert abs(result - result_simulator) <= 1e-1
-
     @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
     def _test_compare_generated_circuits(self, params: list[float]) -> bool:
         """Compare the runs done on LRZ backend with ideal simulations.
@@ -201,6 +186,17 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
             quantum_function_expval.qtape.operations
             == quantum_function_expval_simulator.qtape.operations
         )
+
+    def test_expectation_value_measurements(
+        self, obs: list[qml.ops.qubit.non_parametric_ops], params: list[float]
+    ):
+        """Run a quantum circuit with an expectation value measurement and compare the results with the simulator."""
+
+        result = quantum_function_hamiltonian_expval(*params, obs)
+        result_simulator = quantum_function_hamiltonian_expval_simulator(*params, obs)
+
+        assert result is not None
+        assert abs(result - result_simulator) <= 3e-1
 
     def test_hamiltonian_measurements(
         self,
@@ -245,8 +241,3 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         assert len(result[0]) == (2**num_qubits)
         assert abs(sum(result[0]) - 1) <= 1e-6
         assert all(0 <= p <= 1 for p in result[0])
-
-
-pauli_x = np.array([[0, 1], [1, 0]])
-pauli_y = np.array([[0, -1j], [1j, 0]])
-pauli_z = np.array([[1, 0], [0, -1]])
