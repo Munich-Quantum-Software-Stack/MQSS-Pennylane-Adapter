@@ -135,26 +135,16 @@ class MQSSPennylaneDevice(Device):
                 circuit.measurements[0].obs, qml.ops.op_math.LinearCombination
             ):
                 is_hamiltonian = True
-            circuit: Union[QuantumScriptOrBatch, list[QuantumScriptOrBatch]] = (
-                self.create_batch_circuits_for_hamiltonians(circuit, is_hamiltonian)
+            circuit = self.create_batch_circuits_for_hamiltonians(
+                circuit, is_hamiltonian
             )
 
-            job = backend.run(circuit, shots=shots)
+        job = backend.run(circuit, shots=shots)
+        result = job.result()
 
-            result = job.result()
-
-            # counts = self.fetch_counts(result, shots)
-            # counts: Union[dict, list[dict]] = result.get_counts()
-            measurement = self.calculate_measurement_type(
-                result, circuits, shots, is_hamiltonian
-            )
-        elif self.measurement_type == MeasurementType.PROBS:
-            job = backend.run(circuit, shots=shots)
-            result = job.result()
-
-            measurement = self.calculate_measurement_type(
-                result, circuit, shots, is_hamiltonian
-            )
+        measurement = self.calculate_measurement_type(
+            result, circuit, shots, is_hamiltonian
+        )
         return measurement
 
     def create_batch_circuits_for_hamiltonians(
@@ -235,7 +225,10 @@ class MQSSPennylaneDevice(Device):
         ):
             final_expectation = 0
             for cdx, count in enumerate(counts):
-                measurement = circuits[0].measurements[0]
+                if is_hamiltonian:
+                    measurement = circuits[0].measurements[0]
+                else:
+                    measurement = circuits.measurements[0]
                 observable = getattr(measurement, "obs", None)
 
                 if is_hamiltonian:
@@ -248,23 +241,21 @@ class MQSSPennylaneDevice(Device):
                         else:
                             obs_terms = [base_observable]
 
-                        measured_qubits = [op.wires.labels[0] for op in obs_terms]
+                        measured_qubits = [op.wires.labels for op in obs_terms]
                 else:
                     if observable is None:
                         measured_qubits = list(measurement.wires.labels)
                     else:
                         if isinstance(observable, (qml.PauliX, qml.PauliY, qml.PauliZ)):
-                            measured_qubits = [observable.wires.labels[0]]
+                            measured_qubits = [tuple([observable.wires.labels[0]])]
                         elif hasattr(observable, "operands"):
-                            measured_qubits = [
-                                op.wires.labels[0] for op in observable.operands
-                            ]
+                            measured_qubits = [observable.wires.labels]
                         else:
                             measured_qubits = [observable.wires.labels[0]]
 
                 num_qubits = len(circuits[0].wires)
                 expectation = self.get_expectation_value(
-                    count, measured_qubits, num_qubits, shots
+                    count, measured_qubits[cdx], num_qubits, shots
                 )
                 if is_hamiltonian:
 
@@ -276,7 +267,7 @@ class MQSSPennylaneDevice(Device):
     def get_expectation_value(
         self,
         count: list[float],
-        measured_qubits: list[int],
+        measured_qubits: tuple[int],
         num_qubits: int,
         shots: int,
     ):
@@ -284,7 +275,7 @@ class MQSSPennylaneDevice(Device):
 
         Args:
             counts (list[float]): List of sampled measurements
-            measured_qubits (list[int]): The qubits involved in measurement process
+            measured_qubits (tuple[int]): The qubits involved in measurement process
             num_qubits (int): Number of circuits of the given circuit
             shots (int): Number of shots
 
