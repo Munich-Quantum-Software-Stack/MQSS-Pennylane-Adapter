@@ -1,4 +1,4 @@
-# Welcome to MQP Pennylane Adapter Documentation
+# Welcome to MQSS Pennylane Adapter Documentation
 
 This is the documentation for the MQSS Pennylane Adapter.
 
