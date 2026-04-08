@@ -114,7 +114,7 @@ class MQSSPennylaneDevice(Device):
         shots = (
             circuits[0].shots.total_shots
             if circuits[0].shots.total_shots is not None
-            else 1024
+            else self._legacy_shots
         )
         self.batch_circuits = False
         if isinstance(circuits, list):

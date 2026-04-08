@@ -6,15 +6,13 @@ from src.mqss.pennylane_adapter.device import MQSSPennylaneDevice
 from pennylane import numpy as np
 from .pennylane_adapter_tests_base import TestPennylaneAdapter
 
-dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS, shots=100)
+dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_simulator = qml.device("default.qubit", wires=2)
 dev_hamiltonian = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_hamiltonian_simulator = qml.device("default.qubit", wires=2)
 
 dev_autograd = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
-dev_probs = MQSSPennylaneDevice(
-    wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS, shots=100
-)
+dev_probs = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 
 
 def GHZ_circuit(num_wires: int) -> None:
@@ -29,11 +27,10 @@ def arbitrary_quantum_circuit(x: float, y: float) -> None:
     """
     Defines an arbitrary mock quantum circuit for testing purposes, without a measurement operation
 
-    :param x: The parameter `x` in the `quantum_function_expval` represents the angle for the rotation gate
+    :param x: The parameter `x` represents the angle for the rotation gate
     `RZ` applied on the qubit at wire 0
-    :param y: The parameter `y` in the `quantum_function_expval` function is used as the angle parameter for
-    the rotation gate `RY(y, wires=1)`. This gate applies a rotation around the y-axis of the Bloch
-    sphere by an angle `y` to the qubit on wire
+    :param y: The parameter `y` represents the angle parameter for
+    the rotation gate `RY` at wire 1.
     """
     qml.RZ(x, wires=0)
     qml.CNOT(wires=[0, 1])
