@@ -20,6 +20,7 @@ class MeasurementType(Enum):
     SAMPLE = auto()
     STATE = auto()
     UNKNOWN = auto()
+    MULTIPLE_EXPVAL = auto()
 
 
 class MQSSPennylaneDevice(Device):
@@ -65,6 +66,7 @@ class MQSSPennylaneDevice(Device):
         self.BACKENDS = backends
         self.measurement_type: MeasurementType = MeasurementType.UNKNOWN
         self.batch_circuits: bool = False
+        self.is_multiple_obs: bool = False
         self._legacy_shots = shots
 
     def determine_measurement_type(
@@ -80,6 +82,8 @@ class MQSSPennylaneDevice(Device):
         """
         if not circuit.measurements:
             return MeasurementType.UNKNOWN
+        if len(circuit.measurements) > 1:
+            return MeasurementType.MULTIPLE_EXPVAL
         measurement = circuit.measurements[0]
         if isinstance(measurement, qml.measurements.ProbabilityMP):
             return MeasurementType.PROBS
@@ -135,7 +139,10 @@ class MQSSPennylaneDevice(Device):
         if (
             self.measurement_type == MeasurementType.EXPVAL_HAMILTONIAN
             or self.measurement_type == MeasurementType.EXPVAL
+            or self.measurement_type == MeasurementType.MULTIPLE_EXPVAL
         ):
+            if self.measurement_type == MeasurementType.EXPVAL_HAMILTONIAN:
+                self.is_multiple_obs = True
             if isinstance(
                 circuit.measurements[0].obs, qml.ops.op_math.LinearCombination
             ):
@@ -168,6 +175,7 @@ class MQSSPennylaneDevice(Device):
         if (
             self.measurement_type != MeasurementType.EXPVAL_HAMILTONIAN
             and self.measurement_type != MeasurementType.EXPVAL
+            and self.measurement_type != MeasurementType.MULTIPLE_EXPVAL
         ):
             return circuit
 
@@ -175,7 +183,10 @@ class MQSSPennylaneDevice(Device):
         if is_hamiltonian:
             observables = circuit.measurements[0].obs
         else:
-            observables = [circuit.measurements[0].obs]
+            if self.measurement_type == MeasurementType.MULTIPLE_EXPVAL:
+                observables = [measurement.obs for measurement in circuit.measurements]
+            else:
+                observables = [circuit.measurements[0].obs]
         for obs in observables:
             modified_circuit = self.append_measurement_gates(
                 copy.deepcopy(circuit), obs, is_hamiltonian
@@ -275,6 +286,29 @@ class MQSSPennylaneDevice(Device):
                 else:
                     final_expectation += expectation
             return [final_expectation]
+        elif self.measurement_type == MeasurementType.MULTIPLE_EXPVAL:
+            final_expectation = []
+            for cdx, count in enumerate(counts):
+
+                measurement = circuits[cdx].measurements[cdx]
+                observable = getattr(measurement, "obs", None)
+
+                base_observable = getattr(observable, "base", observable)
+                if hasattr(base_observable, "operands"):
+                    obs_terms = base_observable.operands
+                else:
+                    obs_terms = [base_observable]
+
+                measured_qubits = [op.wires.labels[0] for op in obs_terms]
+
+                num_qubits = len(circuits[cdx].wires)
+
+                expectation = self.get_expectation_value(
+                    count, measured_qubits, num_qubits, shots
+                )
+
+                final_expectation.append(expectation)
+            return [final_expectation]
         elif self.measurement_type == MeasurementType.SAMPLE:
             raise NotImplementedError
         elif self.measurement_type == MeasurementType.STATE:
@@ -284,7 +318,7 @@ class MQSSPennylaneDevice(Device):
 
     def get_expectation_value(
         self,
-        count: list[float],
+        count: dict[str, int] | list[dict[str, int]],
         measured_qubits: tuple[int],
         num_qubits: int,
         shots: int,
@@ -358,7 +392,7 @@ class MQSSPennylaneDevice(Device):
 
     def fetch_counts(
         self, counts: dict[str, int] | list[dict[str, int]], shots: int
-    ) -> list[dict[str, int] | list[dict[str, int]]]:
+    ) -> dict[str, int] | list[dict[str, int]]:
         """Given a dictionary representing the measurements, return the probability distribution as an array
 
         Args:
