@@ -149,7 +149,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
 
     @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
     def test_compare_generated_circuits(self, params: list[float]) -> bool:
-        """Compare the runs done on LRZ backend with ideal simulations.
+        """Compare the depths of the circuits generated for the same quantum function on the MQSS backend and the Pennylane simulator
 
         Args:
 
@@ -167,7 +167,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
 
     @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
     def _test_autograd(self, params: list[float]) -> bool:
-        """Compare the runs done on LRZ backend with ideal simulations in d
+        """Compare the runs done on MQSS backend with ideal simulations in terms of autograd support
 
         Args:
 

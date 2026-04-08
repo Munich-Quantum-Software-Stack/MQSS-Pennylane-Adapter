@@ -65,6 +65,7 @@ class MQSSPennylaneDevice(Device):
         self.BACKENDS = backends
         self.measurement_type: MeasurementType = MeasurementType.UNKNOWN
         self.batch_circuits: bool = False
+        self._legacy_shots = shots
 
     def determine_measurement_type(
         self, circuit: QuantumScriptOrBatch
@@ -106,7 +107,6 @@ class MQSSPennylaneDevice(Device):
         Args:
             circuits (QuantumScriptOrBatch): Pennylane circuit
             execution_config (ExecutionConfig): Additional config for the circuit if necessary
-            shots (int, optional): Number of shots. Defaults to 1024.
 
         Returns:
             TensorLike: Measurement results
