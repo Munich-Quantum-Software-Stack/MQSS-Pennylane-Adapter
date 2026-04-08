@@ -76,7 +76,7 @@ import pennylane as qml
 from pennylane import numpy as np
 from mqss.pennylane_adapter.device import MQSSPennylaneDevice
 n_wires = 5
-dev_hamiltonian = MQSSPennylaneDevice(wires=n_wires, token='<MQSS_TOKEN>', backends='<MQSS_BACKENDS>')
+dev = MQSSPennylaneDevice(wires=n_wires, token='<MQSS_TOKEN>', backends='<MQSS_BACKENDS>')
 @qml.qnode(dev)
 def circuit(
     x: float, y: float
