@@ -1,13 +1,12 @@
 from .job import MQPJob
-from typing import List, Optional, Union
+from typing import Optional, Union
 import pennylane as qml
 from qiskit.transpiler import CouplingMap, Target
-from pennylane.tape import QuantumTape, QuantumScript
+from pennylane.tape import QuantumTape, QuantumScript, QuantumScriptOrBatch
 
 from qiskit.providers import BackendV2, Options  # type: ignore
 
 from mqss_client import MQSSClient, CircuitJobRequest, ResourceInfo  # type: ignore
-from qiskit.circuit import QuantumCircuit
 from .mqss_resources import get_coupling_map, get_target
 
 
@@ -57,7 +56,7 @@ class MQSSPennylaneBackend(BackendV2):
 
     def run(
         self,
-        run_input: Union[QuantumCircuit, List[QuantumCircuit]],
+        run_input: Union[QuantumScript, QuantumTape] | QuantumScriptOrBatch,
         shots: int = 1024,
         no_modify: bool = False,
         queued: bool = False,
@@ -66,7 +65,7 @@ class MQSSPennylaneBackend(BackendV2):
         """Sends the quantum circuit(s) to the selected backend.
 
         Args:
-            run_input (Union[QuantumCircuit, List[QuantumCircuit]]): Pennylane circuit
+            run_input (Union[QuantumScript, List[QuantumCircuit]]): Pennylane circuit
             shots (int, optional): Number of shots. Defaults to 1024.
             no_modify (bool, optional): Flag to bypass MQSS transpilation. no_modify=True means the transpilation will be bypassed if possible. Defaults to False.
 
