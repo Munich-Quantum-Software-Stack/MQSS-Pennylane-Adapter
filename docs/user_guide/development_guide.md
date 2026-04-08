@@ -4,7 +4,7 @@
 
 This project provides a Pennylane Adapter for MQSS, allowing users to access MQSS backends through Pennylane. The main components of the project are:
 
-- `provider.py`: Contains the [`MQSSPennylaneDevice`](../api/MQSSPennylaneDevice.md) class, which serves as the main entry point for defining MQSS devices in Pennylane.
+- `device.py`: Contains the [`MQSSPennylaneDevice`](../api/MQSSPennylaneDevice.md) class, which serves as the main entry point for defining MQSS devices in Pennylane.
 - `backend.py`: Contains the [`MQSSPennylaneBackend`](../api/MQSSPennylaneBackend.md) class, which interfaces with the MQSS backends.
 - `job.py`: Contains the [`MQPJob`](../api/MQPJob.md) class, which handles job cancellation, status checking, and result retrieval.
 
@@ -12,7 +12,7 @@ This project provides a Pennylane Adapter for MQSS, allowing users to access MQS
 
 Before you start developing, ensure you have the following installed:
 
-- Python 3.8 to 3.11
+- Python >=3.11
 - [`uv`](https://docs.astral.sh/uv/) package manager for python
 
 ## Setting Up the Development Environment

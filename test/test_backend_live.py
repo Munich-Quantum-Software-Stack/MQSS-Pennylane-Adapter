@@ -27,11 +27,10 @@ def arbitrary_quantum_circuit(x: float, y: float) -> None:
     """
     Defines an arbitrary mock quantum circuit for testing purposes, without a measurement operation
 
-    :param x: The parameter `x` in the `quantum_function_expval` represents the angle for the rotation gate
+    :param x: The parameter `x` represents the angle for the rotation gate
     `RZ` applied on the qubit at wire 0
-    :param y: The parameter `y` in the `quantum_function_expval` function is used as the angle parameter for
-    the rotation gate `RY(y, wires=1)`. This gate applies a rotation around the y-axis of the Bloch
-    sphere by an angle `y` to the qubit on wire
+    :param y: The parameter `y` represents the angle parameter for
+    the rotation gate `RY` at wire 1.
     """
     qml.RZ(x, wires=0)
     qml.CNOT(wires=[0, 1])
@@ -147,7 +146,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
 
     @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
     def test_compare_generated_circuits(self, params: list[float]) -> bool:
-        """Compare the runs done on LRZ backend with ideal simulations.
+        """Compare the depths of the circuits generated for the same quantum function on the MQSS backend and the Pennylane simulator
 
         Args:
 
@@ -157,14 +156,15 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         _ = quantum_function_expval_simulator(*params)
         _ = quantum_function_expval(*params)
 
-        assert (
-            quantum_function_expval.qtape.operations
-            == quantum_function_expval_simulator.qtape.operations
-        )
+        resources = qml.specs(quantum_function_expval)(*params).resources
+        simulator_resources = qml.specs(quantum_function_expval_simulator)(
+            *params
+        ).resources
+        assert resources.depth == simulator_resources.depth
 
     @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
     def _test_autograd(self, params: list[float]) -> bool:
-        """Compare the runs done on LRZ backend with ideal simulations in d
+        """Compare the runs done on MQSS backend with ideal simulations in terms of autograd support
 
         Args:
 
@@ -223,7 +223,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         """Test that we can get probabilities back from the device"""
         x, y = params
         result = quantum_function_probs(x, y)
-        num_qubits = quantum_function_probs.qtape.num_wires
+        num_qubits = qml.specs(quantum_function_probs)(x, y).num_device_wires
         assert result is not None
         assert len(result) == (2**num_qubits)
         assert abs(sum(result) - 1) <= 1e-6

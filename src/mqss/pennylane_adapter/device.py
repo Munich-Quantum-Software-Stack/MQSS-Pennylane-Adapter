@@ -1,4 +1,4 @@
-from pennylane.devices import Device, DefaultExecutionConfig
+from pennylane.devices import Device, ExecutionConfig
 from pennylane.tape import QuantumScriptOrBatch
 
 from pennylane import numpy as np
@@ -8,11 +8,7 @@ import copy
 import pennylane as qml
 from mqss.pennylane_adapter.adapter import MQSSPennylaneAdapter
 from mqss.pennylane_adapter.config import MQSS_URL
-from .utils import (
-    int2bit,
-    bit2int,
-    supports_operation,
-)
+from .utils import int2bit, bit2int, supports_operation, operations
 
 from enum import Enum, auto
 
@@ -49,7 +45,7 @@ class MQSSPennylaneDevice(Device):
         token: str,
         backends: str,
         wires=None,
-        shots=None,
+        shots=1024,
         seed=None,
         supports_derivatives=False,
     ):
@@ -59,15 +55,17 @@ class MQSSPennylaneDevice(Device):
             token (str): Munich Quantum Portal (MQP) token
             backends (str): MQP backend
             wires (int, optional): Number of wires in the circuit Defaults to None.
-            shots (int, optional): Number of shots, for expectation values leave it as None. Defaults to None.
+            shots (int, optional): Legacy attribute for number of shots. Now, shots attribute is expected at the QNode level, but this attribute stays as a legacy fallback option. Defaults to 1024.
             seed (int, optional): Defaults to None.
             supports_derivatives (bool, optional): Boolean flag for autograd support. Defaults to False.
         """
-        super().__init__(wires=wires, shots=shots)
+        super().__init__(wires=wires)
+
         self.TOKEN = token
         self.BACKENDS = backends
         self.measurement_type: MeasurementType = MeasurementType.UNKNOWN
         self.batch_circuits: bool = False
+        self._legacy_shots = shots
 
     def determine_measurement_type(
         self, circuit: QuantumScriptOrBatch
@@ -101,20 +99,23 @@ class MQSSPennylaneDevice(Device):
 
     def execute(
         self,
-        circuits: Tuple[QuantumScriptOrBatch],
-        execution_config: DefaultExecutionConfig,
-        shots=1024,
+        circuits: Tuple[QuantumScriptOrBatch] | QuantumScriptOrBatch,
+        execution_config: ExecutionConfig,
     ) -> TensorLike:
         """Sends the Pennylane circuit to the specified MQSS backend.
 
         Args:
             circuits (QuantumScriptOrBatch): Pennylane circuit
-            execution_config (DefaultExecutionConfig): Additional config for the circuit if necessary
-            shots (int, optional): Number of shots. Defaults to 1024.
+            execution_config (ExecutionConfig): Additional config for the circuit if necessary
 
         Returns:
             TensorLike: Measurement results
         """
+        shots = (
+            circuits[0].shots.total_shots
+            if circuits[0].shots.total_shots is not None
+            else self._legacy_shots
+        )
         self.batch_circuits = False
         if isinstance(circuits, list):
             self.batch_circuits = True
@@ -127,7 +128,7 @@ class MQSSPennylaneDevice(Device):
 
         circuit, _ = qml.transforms.decompose(
             circuit,
-            gate_set=supports_operation,
+            gate_set=operations,
         )
         circuit = circuit[0]
 
@@ -157,7 +158,7 @@ class MQSSPennylaneDevice(Device):
         """Creates a batched job where there is a Hamiltonian expectation value calculation as measurement
 
         Args:
-            tape (QuantumScriptOrBatch): Original quantum circuit
+            circuit (QuantumScriptOrBatch): Original quantum circuit
             is_hamiltonian (bool): Indicates if there is a hamiltonian expectation value calculation
 
         Returns:
