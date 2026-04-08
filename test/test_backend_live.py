@@ -7,6 +7,7 @@ from pennylane import numpy as np
 from .pennylane_adapter_tests_base import TestPennylaneAdapter
 
 dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
+dev_multiple = MQSSPennylaneDevice(wires=10, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_simulator = qml.device("default.qubit", wires=2)
 dev_hamiltonian = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_hamiltonian_simulator = qml.device("default.qubit", wires=2)
@@ -228,3 +229,28 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         assert len(result) == (2**num_qubits)
         assert abs(sum(result) - 1) <= 1e-6
         assert all(0 <= p <= 1 for p in result)
+
+    def test_multiple_expvals(
+        self, list_obs: list[qml.ops.qubit.non_parametric_ops], params: list[float]
+    ):
+        """Test that we can get multiple expectation values back from the device"""
+
+        @qml.qnode(dev_multiple, shots=1024)
+        def quantum_function_expval(x, y):
+            """
+            Defines an arbitrary mock quantum circuit for testing purposes, with an expectation value measurement
+
+            :param x: The parameter `x` represents the angle for the rotation gate
+            `RZ` applied on the qubit at wire 0
+            :param y: The parameter `y` represents the angle parameter for
+            the rotation gate `RY` at wire 1.
+            """
+            qml.RZ(x, wires=0)
+            qml.CNOT(wires=[0, 1])
+            qml.RY(y, wires=1)
+            qml.CNOT(wires=[1, 0])
+            qml.RX(x, wires=1)
+            return [qml.expval(obs) for obs in list_obs]
+
+        result = quantum_function_expval(*params)
+        assert len(result) == len(list_obs)
