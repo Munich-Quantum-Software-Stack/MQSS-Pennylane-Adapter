@@ -158,7 +158,7 @@ class MQSSPennylaneDevice(Device):
         """Creates a batched job where there is a Hamiltonian expectation value calculation as measurement
 
         Args:
-            tape (QuantumScriptOrBatch): Original quantum circuit
+            circuit (QuantumScriptOrBatch): Original quantum circuit
             is_hamiltonian (bool): Indicates if there is a hamiltonian expectation value calculation
 
         Returns:
