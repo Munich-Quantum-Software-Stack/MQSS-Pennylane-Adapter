@@ -95,7 +95,7 @@ def circuit(
     return qml.probs(qml.probs(wires=[0, 1]))
 ```
 
-# List of Observables
+### List of Observables
 
 In specific routines, you might require multiple measurement results based on a different combination of Pauli words. Different operators might also act on the same qubit. The return statement has to be defined as a list of expectation value combinations as follows:
 ```python
@@ -126,7 +126,7 @@ In such cases, the output is also a list, corresponding to the expectation value
 [tensor(0.75976562, requires_grad=True), tensor(0.0625, requires_grad=True), tensor(0.96679688, requires_grad=True)]
 ```
 
-With the latest release (1.2.0), it is also possible to run high level PennyLane native quantum operations using the MQSS backends, such as `FermionicDoubleExcitation`:
+With the latest release (1.2.1), it is also possible to run high level PennyLane native quantum operations using the MQSS backends, such as `FermionicDoubleExcitation`:
 ```python
 def build_h2_problem():
     symbols = ["H", "H"]
