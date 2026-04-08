@@ -11,6 +11,10 @@ pip install mqss-pennylane-adapter
 
 ## 🚀 Job Submission with different measurement types
 MQSS PennyLane Provider has support for most of the native PennyLane features. For instance, you can define a quantum circuit using PennyLane quantum gates, and decorate the method with the MQSSPennylaneDevice object. Parametric gates can also be used. 
+
+### Expectation Values using Pauli Observables
+It is possible to define any Pauli word using the keywords  `qml.PauliX`, `qml.PauliY` or `qml.PauliZ` and highlight which qubit each Pauli acts on, to calculate the expectation value with respect to that observable, same way it is done with PennyLane default devices.
+
 ```python
 import pennylane as qml
 from pennylane import numpy as np
@@ -37,7 +41,10 @@ def quantum_function_expval(x, y):
 
 params = [np.pi / 3, np.pi / 17]
 result = quantum_function_expval(*params)
+
 ```
+### Expectation Values using Hamiltonians
+
 Furthermore, you can define a Hamiltonian object within PennyLane, and calculate the expectation value with respect to that Hamiltonian. For these cases, Pennylane Provider simply creates a batch job for each term in the Hamiltonian, to calculate the expectation value.
 
 ```python
@@ -68,7 +75,7 @@ obs = [
 hamiltonian = qml.Hamiltonian(coeffs, obs)
 result = quantum_function_hamiltonian_expval(*params, hamiltonian)
 ```
-
+### Probabilities (Counts)
 If you are just interested in accessing the counts (or probabilities), you can also use
 
 ```python
@@ -88,7 +95,38 @@ def circuit(
     return qml.probs(qml.probs(wires=[0, 1]))
 ```
 
-With the latest release (1.2.0), it is also possible to run high level PennyLane native quantum operations using the MQSS backends, such as `FermionicDoubleExcitation`:
+### List of Observables
+
+In specific routines, you might require multiple measurement results based on a different combination of Pauli words. Different operators might also act on the same qubit. The return statement has to be defined as a list of expectation value combinations as follows:
+```python
+observables = [qml.PauliZ(0), qml.PauliX(1), qml.PauliZ(2) @ qml.PauliZ(3)]
+
+@qml.qnode(dev, shots=1024)
+def quantum_function_expval(x, y):
+    """
+    Defines an arbitrary mock quantum circuit for testing purposes, with an expectation value measurement
+
+    :param x: The parameter `x` represents the angle for the rotation gate
+    `RZ` applied on the qubit at wire 0
+    :param y: The parameter `y` represents the angle parameter for
+    the rotation gate `RY` at wire 1.
+    """
+    qml.RZ(x, wires=0)
+    qml.CNOT(wires=[0, 1])
+    qml.RY(y, wires=1)
+    qml.CNOT(wires=[1, 0])
+    qml.RX(x, wires=1)
+    return [qml.expval(obs) for obs in observables]
+```
+
+In such cases, the output is also a list, corresponding to the expectation value of each term. For instance, for the case above, the output is as follows:
+
+**Output:**
+```text
+[tensor(0.75976562, requires_grad=True), tensor(0.0625, requires_grad=True), tensor(0.96679688, requires_grad=True)]
+```
+
+With the latest release (1.2.1), it is also possible to run high level PennyLane native quantum operations using the MQSS backends, such as `FermionicDoubleExcitation`:
 ```python
 def build_h2_problem():
     symbols = ["H", "H"]
