@@ -55,7 +55,7 @@ class MQSSPennylaneDevice(Device):
             token (str): Munich Quantum Portal (MQP) token
             backends (str): MQP backend
             wires (int, optional): Number of wires in the circuit Defaults to None.
-            shots (int, optional): Number of shots, for expectation values leave it as None. Defaults to 1024.
+            shots (int, optional): Legacy attribute for number of shots. Now, shots attribute is expected at the QNode level, but this attribute stays as a legacy fallback option. Defaults to 1024.
             seed (int, optional): Defaults to None.
             supports_derivatives (bool, optional): Boolean flag for autograd support. Defaults to False.
         """

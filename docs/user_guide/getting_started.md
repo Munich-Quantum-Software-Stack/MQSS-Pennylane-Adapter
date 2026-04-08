@@ -1,7 +1,7 @@
 # Getting Started
 
 This repository implements a custom PennyLane backend called MQSSPennylaneDevice, which is able to send quantum jobs to LRZ's infrastructure using the [PennyLane](https://pennylane.ai) frontend. 
-The users would be able to use various PennyLane functions ([executing circuits](https://docs.pennylane.ai/en/stable/introduction/operations.html), [different measurement types](https://docs.pennylane.ai/en/stable/introduction/measurements.html), and circuit optimization and Quantum Machine Learning for future releases) while running their jobs on [LRZ's Quantum Hardware](https://portal.quantum.lrz.de).
+The users would be able to use various PennyLane functions, such as [executing circuits](https://docs.pennylane.ai/en/stable/introduction/operations.html) and [different measurement types](https://docs.pennylane.ai/en/stable/introduction/measurements.html), while running their jobs on [LRZ's Quantum Hardware](https://portal.quantum.lrz.de). Support for circuit optimization and Quantum Machine Learning is planned for future releases.
 
 ## 🛠️ Installation
 To install the package, simply run 
