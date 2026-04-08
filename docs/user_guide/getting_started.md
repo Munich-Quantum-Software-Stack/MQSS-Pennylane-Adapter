@@ -18,7 +18,7 @@ from mqss.pennylane_adapter.device import MQSSPennylaneDevice
 
 dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 
-@qml.qnode(dev)
+@qml.qnode(dev, shots = 1024)
 def quantum_function_expval(x, y):
     """
     Defines an arbitrary mock quantum circuit for testing purposes, with an expectation value measurement
@@ -46,7 +46,7 @@ from pennylane import numpy as np
 from mqss.pennylane_adapter.device import MQSSPennylaneDevice
 dev_hamiltonian = MQSSPennylaneDevice(wires=2, token='<MQSS_TOKEN>', backends='<MQSS_BACKENDS>')
 
-@qml.qnode(dev_hamiltonian)
+@qml.qnode(dev_hamiltonian, shots = 1024)
 def quantum_function_hamiltonian_expval(
     x: float, y: float, H: qml.Hamiltonian
 ) -> float:
@@ -77,13 +77,15 @@ from pennylane import numpy as np
 from mqss.pennylane_adapter.device import MQSSPennylaneDevice
 n_wires = 5
 dev = MQSSPennylaneDevice(wires=n_wires, token='<MQSS_TOKEN>', backends='<MQSS_BACKENDS>')
-@qml.qnode(dev)
+@qml.qnode(dev, shots = 1024)
 def circuit(
     x: float, y: float
 ) -> float:
     
-    arbitrary_quantum_circuit(x, y)
-    return qml.probs(range=(0, n_wires))
+    qml.RZ(x, wires=0)
+    qml.CNOT(wires=[0, 1])
+    qml.RY(y, wires=1)
+    return qml.probs(qml.probs(wires=[0, 1]))
 ```
 
 With the latest release (1.2.0), it is also possible to run high level PennyLane native quantum operations using the MQSS backends, such as `FermionicDoubleExcitation`:

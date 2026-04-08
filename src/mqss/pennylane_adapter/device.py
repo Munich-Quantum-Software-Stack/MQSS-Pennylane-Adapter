@@ -99,7 +99,7 @@ class MQSSPennylaneDevice(Device):
 
     def execute(
         self,
-        circuits: Tuple[QuantumScriptOrBatch],
+        circuits: Tuple[QuantumScriptOrBatch] | QuantumScriptOrBatch,
         execution_config: ExecutionConfig,
     ) -> TensorLike:
         """Sends the Pennylane circuit to the specified MQSS backend.
