@@ -7,7 +7,7 @@ from pennylane import numpy as np
 from .pennylane_adapter_tests_base import TestPennylaneAdapter
 
 dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
-dev_multiple = MQSSPennylaneDevice(wires=10, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
+dev_multiple = MQSSPennylaneDevice(wires=4, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_simulator = qml.device("default.qubit", wires=2)
 dev_hamiltonian = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_hamiltonian_simulator = qml.device("default.qubit", wires=2)
@@ -236,7 +236,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         """Test that we can get multiple expectation values back from the device"""
 
         @qml.qnode(dev_multiple, shots=1024)
-        def quantum_function_expval(x, y):
+        def quantum_function_expval_multiple(x, y):
             """
             Defines an arbitrary mock quantum circuit for testing purposes, with an expectation value measurement
 
@@ -252,5 +252,5 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
             qml.RX(x, wires=1)
             return [qml.expval(obs) for obs in list_obs]
 
-        result = quantum_function_expval(*params)
+        result = quantum_function_expval_multiple(*params)
         assert len(result) == len(list_obs)

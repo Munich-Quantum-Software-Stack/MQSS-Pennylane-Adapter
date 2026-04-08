@@ -50,13 +50,11 @@ def hamiltonian_data(request):
 
 @pytest.fixture(
     params=[
-        [
-            [qml.PauliZ(0), qml.PauliX(1), qml.PauliZ(2), qml.PauliZ(3)],
-            [qml.PauliZ(0), qml.PauliX(1), qml.PauliZ(2) @ qml.PauliZ(3)],
-            [qml.PauliZ(0) @ qml.PauliX(1), qml.PauliZ(2), qml.PauliZ(3)],
-            [qml.PauliZ(0) @ qml.PauliX(1), qml.PauliZ(2) @ qml.PauliZ(3)],
-            [qml.PauliZ(0) @ qml.PauliX(1) @ qml.PauliZ(2) @ qml.PauliZ(3)],
-        ]
+        [qml.PauliZ(0), qml.PauliX(1), qml.PauliZ(2), qml.PauliZ(3)],
+        [qml.PauliZ(0), qml.PauliX(1), qml.PauliZ(2) @ qml.PauliZ(3)],
+        [qml.PauliZ(0) @ qml.PauliX(1), qml.PauliZ(2), qml.PauliZ(3)],
+        [qml.PauliZ(0) @ qml.PauliX(1), qml.PauliZ(2) @ qml.PauliZ(3)],
+        [qml.PauliZ(0) @ qml.PauliX(1) @ qml.PauliZ(2) @ qml.PauliZ(3)],
     ]
 )
 def list_obs(request):
