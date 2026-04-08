@@ -468,7 +468,7 @@ wheels = [
 
 [[package]]
 name = "mqss-pennylane-adapter"
-version = "1.2.0"
+version = "1.2.1"
 source = { editable = "." }
 dependencies = [
     { name = "mqp-client" },
