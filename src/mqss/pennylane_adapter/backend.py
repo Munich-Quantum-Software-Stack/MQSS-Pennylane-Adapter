@@ -65,7 +65,7 @@ class MQSSPennylaneBackend(BackendV2):
         """Sends the quantum circuit(s) to the selected backend.
 
         Args:
-            run_input (Union[QuantumScript, List[QuantumCircuit]]): Pennylane circuit
+            run_input (Union[QuantumScript, List[QuantumTape]] | QuantumScriptOrBatch): Pennylane circuit
             shots (int, optional): Number of shots. Defaults to 1024.
             no_modify (bool, optional): Flag to bypass MQSS transpilation. no_modify=True means the transpilation will be bypassed if possible. Defaults to False.
 

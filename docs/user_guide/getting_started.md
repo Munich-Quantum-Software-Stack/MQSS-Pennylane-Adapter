@@ -21,7 +21,7 @@ dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 @qml.qnode(dev)
 def quantum_function_expval(x, y):
     """
-    Defines an arbitrary mock quantum circuit for testing purposes, without a measurement operation
+    Defines an arbitrary mock quantum circuit for testing purposes, with an expectation value measurement
 
     :param x: The parameter `x` represents the angle for the rotation gate
     `RZ` applied on the qubit at wire 0
@@ -50,7 +50,10 @@ dev_hamiltonian = MQSSPennylaneDevice(wires=2, token='<MQSS_TOKEN>', backends='<
 def quantum_function_hamiltonian_expval(
     x: float, y: float, H: qml.Hamiltonian
 ) -> float:
-    arbitrary_quantum_circuit(x, y)
+    qml.RZ(x, wires=0)
+    qml.CNOT(wires=[0, 1])
+    qml.RY(y, wires=1)
+    
     return qml.expval(H)
 
 J = 0.5  # Interaction strength

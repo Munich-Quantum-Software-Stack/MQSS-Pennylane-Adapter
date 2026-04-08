@@ -492,7 +492,7 @@ dev = [
 requires-dist = [
     { name = "mqp-client", specifier = "==0.1.4" },
     { name = "mqss-client", specifier = ">=0.2.0" },
-    { name = "pennylane", specifier = ">=0.44.0" },
+    { name = "pennylane", specifier = ">=0.44.1" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "qiskit", specifier = ">=1.2.4,<1.4.0" },
     { name = "requests", specifier = ">=2.32.3" },
