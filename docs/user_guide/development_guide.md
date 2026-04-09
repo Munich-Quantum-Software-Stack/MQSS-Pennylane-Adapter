@@ -20,52 +20,37 @@ Before you start developing, ensure you have the following installed:
 **Clone the repository:**
 
 ```sh
-git clone https://github.com/Munich-Quantum-Software-Stack/MQP-Qiskit-Provider.git
-cd MQP-Qiskit-Provider
+git clone git@github.com:Munich-Quantum-Software-Stack/MQSS-Pennylane-Adapter.git
+cd MQSS-Pennylane-Adapter
 ```
 
 **Create a virtual environment and install the dependencies:**
 
+You can create the virtual environment through `uv sync`. `--all-groups` option lets you install development dependencies as well.
 ```sh
-pdm install
+uv sync --all-groups
 ```
 
 ## Running Tests
 
-To run the tests, use `pytest`:
+To run the tests, use `pytest` through `uv`:
 
 ```sh
-pdm run pytest
+uv run pytest
 ```
+some useful flags are:
+```sh
+uv run pytest -s # Shows print statements in the terminal directly.
+uv run pytest -m # Runs only the mock tests 
+uv run pytest --maxfail=<N> # Allows N failures, can be useful for live testing.
+uv run pytest --pdb # Goes into debug mode once a test fails.
+```
+## Publishing Documentation on GitHub Pages and Viewing it Locally
 
-## Publishing Documentation on GitHub Pages
+The documentation is published to GitHub Pages, after every succesful PR merged to main. To update it locally at [http://localhost:8000](http://localhost:8000), you can run:
 
-To publish the documentation on GitHub Pages, follow these steps:
-
-**Install MkDocs and the Material theme:**
 
 ```sh
-pdm install -G docs
+uv run mkdocs build
+uv run mkdocs serve
 ```
-
-**Build the documentation:**
-
-```sh
-pdm run mkdocs build
-```
-
-**View documentation locally**
-
-Run the following and browse the documentation locally at: [http://localhost:8000](http://localhost:8000)
-
-```sh
-pdm run mkdocs serve
-```
-
-**Deploy the documentation to GitHub Pages:**
-
-```sh
-pdm run mkdocs gh-deploy --remote-name git@github.com:Munich-Quantum-Software-Stack/MQP-Qiskit-Provider-Documentation.git --remote-branch gh-pages
-```
-
-This will create a new branch named `gh-pages` in your repository and deploy the documentation to GitHub Pages.
