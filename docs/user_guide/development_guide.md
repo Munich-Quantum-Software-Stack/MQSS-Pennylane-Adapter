@@ -54,3 +54,4 @@ The documentation is published to GitHub Pages, after every succesful PR merged 
 uv run mkdocs build
 uv run mkdocs serve
 ```
+
