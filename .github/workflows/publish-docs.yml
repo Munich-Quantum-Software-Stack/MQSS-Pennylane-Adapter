@@ -1,12 +1,15 @@
 name: Update docs
 
 on:
-  push:
-    tags:
-      - "v*.*.*" # Trigger on version tags
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
 
 jobs:
   update-docs:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     steps:
