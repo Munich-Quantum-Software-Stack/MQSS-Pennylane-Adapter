@@ -47,6 +47,7 @@ class MQSSPennylaneDevice(Device):
         backends: str,
         wires=None,
         shots=1024,
+        use_commuting_measurement_grouping=True,
         seed=None,
         supports_derivatives=False,
     ):
@@ -59,6 +60,7 @@ class MQSSPennylaneDevice(Device):
             shots (int, optional): Legacy attribute for number of shots. Now, shots attribute is expected at the QNode level, but this attribute stays as a legacy fallback option. Defaults to 1024.
             seed (int, optional): Defaults to None.
             supports_derivatives (bool, optional): Boolean flag for autograd support. Defaults to False.
+            use_commuting_measurement_grouping (bool, optional): Boolean flag to indicate whether to use commuting measurement grouping for Hamiltonian expectation value calculation. Defaults to True.
         """
         super().__init__(wires=wires)
 
@@ -68,6 +70,7 @@ class MQSSPennylaneDevice(Device):
         self.batch_circuits: bool = False
         self.is_multiple_obs: bool = False
         self._legacy_shots = shots
+        self.use_commuting_measurement_grouping = use_commuting_measurement_grouping
 
     def determine_measurement_type(
         self, circuit: QuantumScriptOrBatch
@@ -181,18 +184,44 @@ class MQSSPennylaneDevice(Device):
 
         batched_circuits = []
         if is_hamiltonian:
-            observables = circuit.measurements[0].obs
+            if self.use_commuting_measurement_grouping:
+                hamiltonian = circuit.measurements[0].obs
+                coeffs = hamiltonian.coeffs
+                observables = hamiltonian.ops
+
+                groups = qml.pauli.group_observables(observables, grouping_type="qwc")
+                self.grouped_coeffs = []
+                self.grouped_observables = groups
+
+                for group in groups:
+                    group_coeffs = []
+                    for obs in group:
+                        idx = observables.index(obs)
+                        group_coeffs.append(coeffs[idx])
+                    self.grouped_coeffs.append(group_coeffs)
+                
+                for group in groups:
+                    modified_circuit = copy.deepcopy(circuit)
+                    for obs in group:
+                        modified_circuit = self.append_measurement_gates(
+                            modified_circuit, obs, is_hamiltonian
+                        )
+                    batched_circuits.append(modified_circuit)
+            else:
+                observables = circuit.measurements[0].obs
         else:
             if self.measurement_type == MeasurementType.MULTIPLE_EXPVAL:
                 observables = [measurement.obs for measurement in circuit.measurements]
             else:
                 observables = [circuit.measurements[0].obs]
-        for obs in observables:
-            modified_circuit = self.append_measurement_gates(
-                copy.deepcopy(circuit), obs, is_hamiltonian
-            )
-            # modified_circuit.measurements = [qml.expval(obs)]
-            batched_circuits.append(modified_circuit)
+
+        if not (is_hamiltonian and self.use_commuting_measurement_grouping):
+            for obs in observables:
+                modified_circuit = self.append_measurement_gates(
+                    copy.deepcopy(circuit), obs, is_hamiltonian
+                )
+                # modified_circuit.measurements = [qml.expval(obs)]
+                batched_circuits.append(modified_circuit)
         if len(batched_circuits) > 1:
             self.batch_circuits = True
 
@@ -241,8 +270,25 @@ class MQSSPennylaneDevice(Device):
             self.measurement_type == MeasurementType.EXPVAL
             or self.measurement_type == MeasurementType.EXPVAL_HAMILTONIAN
         ):
-
             final_expectation = 0
+            if is_hamiltonian and self.use_commuting_measurement_grouping:
+                for cdx, count in enumerate(counts):
+                    group = self.grouped_observables[cdx]
+                    coeffs = self.grouped_coeffs[cdx]
+
+                    num_qubits = len(circuits[0].wires)
+
+                    for obs, coeff in zip(group, coeffs):
+                        if hasattr(obs, "operands"):
+                            measured_qubits = [op.wires.labels[0] for op in obs.operands]
+                        else:
+                            measured_qubits = [obs.wires.labels[0]]
+                        expectation = self.get_expectation_value(
+                            count, measured_qubits, num_qubits, shots
+                        )
+                        final_expectation += expectation * coeff
+                return [final_expectation]
+            
             for cdx, count in enumerate(counts):
                 if self.batch_circuits:
                     measurement = circuits[0].measurements[0]
@@ -367,7 +413,7 @@ class MQSSPennylaneDevice(Device):
             QuantumScriptOrBatch: Pennylane circuit
         """
         try:
-            if is_hamiltonian:
+            if is_hamiltonian and not self.use_commuting_measurement_grouping:
                 observables = obs.base
             else:
                 observables = obs
