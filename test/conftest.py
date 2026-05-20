@@ -42,6 +42,14 @@ def obs(request):
             [1.5],
             [qml.PauliZ(0)],
         ),
+        (
+            [-0.5, -0.2, -0.2],
+            [
+                qml.PauliZ(0) @ qml.PauliZ(1),
+                qml.PauliX(0),
+                qml.PauliX(1),
+            ],
+        ),
     ]
 )
 def hamiltonian_data(request):

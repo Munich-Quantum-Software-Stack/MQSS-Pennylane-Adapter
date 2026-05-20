@@ -9,8 +9,9 @@ from .pennylane_adapter_tests_base import TestPennylaneAdapter
 dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_multiple = MQSSPennylaneDevice(wires=4, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_simulator = qml.device("default.qubit", wires=2)
-dev_hamiltonian = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
+dev_hamiltonian = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS, use_commuting_measurement_grouping=False)
 dev_hamiltonian_simulator = qml.device("default.qubit", wires=2)
+dev_hamiltonian_grouping = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS, use_commuting_measurement_grouping=True)
 
 dev_autograd = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_probs = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
@@ -121,6 +122,24 @@ def quantum_function_hamiltonian_expval(
 
     return qml.expval(H)
 
+@qml.qnode(dev_hamiltonian_grouping)
+def quantum_function_hamiltonian_expval_grouping(
+    x: float, y: float, H: qml.Hamiltonian
+) -> float:
+    """
+    The function `quantum_function_hamiltonian_expval_grouping` applies quantum operations RZ, CNOT, and RY to qubits and returns
+    the expectation value of a given Hamiltonian on the second qubit, using commuting measurement grouping.
+
+    :param x: The parameter `x` in the `quantum_function_expval` represents the angle for the rotation gate
+    `RZ` applied on the qubit at wire 0
+    :param y: The parameter `y` in the `quantum_function_expval` function is used as the angle parameter for
+    the rotation gate `RY(y, wires=1)`. This gate applies a rotation around the y-axis of the Bloch
+    sphere by an angle `y` to the qubit on wire
+    :return: The function `quantum_function_expval` returns the expected value of a given operator
+    :H: Pennylane Hamiltonian object
+    """
+    arbitrary_quantum_circuit(x, y)
+    return qml.expval(H)
 
 @qml.qnode(dev_hamiltonian_simulator)
 def quantum_function_hamiltonian_expval_simulator(
@@ -207,6 +226,35 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
 
         try:
             result = quantum_function_hamiltonian_expval(*params, hamiltonian)
+            result_simulator = quantum_function_hamiltonian_expval_simulator(
+                *params, hamiltonian
+            )
+
+        except Exception as e:
+            print(
+                f"There was an error while measuring the expectation value of the hamiltonian, with the following error: {e}"
+            )
+            raise e
+
+        assert result is not None
+        assert abs(result - result_simulator) <= 3e-1
+
+    def test_hamiltonian_measurements_grouping(
+        self,
+        hamiltonian_data: tuple[list[float], list[qml.ops.qubit.non_parametric_ops]],
+        params: list[float],
+    ):
+        """Run a quantum circuit with a hamiltonian expectation value, using commuting measurement grouping
+
+        Args:
+            coeffs (list[float]): _description_
+            obs (list[qml.ops.qubit.non_parametric_ops]): _description_
+        """
+        coeffs, obs = hamiltonian_data
+        hamiltonian = qml.Hamiltonian(coeffs, obs)
+
+        try:
+            result = quantum_function_hamiltonian_expval_grouping(*params, hamiltonian)
             result_simulator = quantum_function_hamiltonian_expval_simulator(
                 *params, hamiltonian
             )

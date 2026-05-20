@@ -276,19 +276,22 @@ class MQSSPennylaneDevice(Device):
                     group = self.grouped_observables[cdx]
                     coeffs = self.grouped_coeffs[cdx]
 
-                    num_qubits = len(circuits[0].wires)
+                    if self.batch_circuits:
+                        num_qubits = len(circuits[0].wires)
+                    else:
+                        num_qubits = len(circuits.wires)
 
                     for obs, coeff in zip(group, coeffs):
                         if hasattr(obs, "operands"):
-                            measured_qubits = [op.wires.labels[0] for op in obs.operands]
+                            measured_qubits = tuple(op.wires.labels[0] for op in obs.operands)
                         else:
-                            measured_qubits = [obs.wires.labels[0]]
+                            measured_qubits = tuple([obs.wires.labels[0]])
                         expectation = self.get_expectation_value(
                             count, measured_qubits, num_qubits, shots
                         )
                         final_expectation += expectation * coeff
                 return [final_expectation]
-            
+
             for cdx, count in enumerate(counts):
                 if self.batch_circuits:
                     measurement = circuits[0].measurements[0]
