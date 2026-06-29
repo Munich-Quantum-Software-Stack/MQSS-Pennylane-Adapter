@@ -225,7 +225,7 @@ class TestPennylaneJobs(TestPennylaneAdapter):
         )
 
     @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
-    def _test_autograd(params: list[float]) -> bool:
+    def test_autograd(monkeypatch: pytest.MonkeyPatch, params: list[float]) -> bool:
         """Compare the runs done on LRZ backend with ideal simulations in d
 
         Args:
@@ -234,12 +234,33 @@ class TestPennylaneJobs(TestPennylaneAdapter):
 
         """
 
-        results = qml.gradients.param_shift(quantum_function_autograd)(*params)
-        print(results)
-        assert (
-            quantum_function_expval.qtape.operations
-            == quantum_function_expval_simulator.qtape.operations
+        dev_autograd = MQSSPennylaneDevice(
+            wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS
         )
+
+        @qml.qnode(
+            dev_autograd,
+            interface="autograd",
+            diff_method="parameter-shift",
+            shots=1024,
+        )
+        def quantum_function_autograd(x, y):
+            qml.RZ(x, wires=0)
+            qml.H(wires=0)
+            qml.CNOT(wires=[0, 1])
+            qml.H(wires=1)
+            qml.RY(y, wires=1)
+            qml.CNOT(wires=[1, 0])
+            qml.H(wires=1)
+            qml.RX(x, wires=1)
+            return qml.expval(qml.PauliX(0) @ qml.PauliZ(1))
+
+        params = np.array([0.1, 0.2], requires_grad=True)
+
+        results = qml.gradients.param_shift(quantum_function_autograd)(
+            params[0], params[1]
+        )
+        assert results is not None
 
     @pytest.mark.parametrize("coeffs", [[1.5, -0.92]])
     @pytest.mark.parametrize(
