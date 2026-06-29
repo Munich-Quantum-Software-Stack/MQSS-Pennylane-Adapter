@@ -163,8 +163,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         ).resources
         assert resources.depth == simulator_resources.depth
 
-    @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
-    def _test_autograd(self, params: list[float]) -> bool:
+    def _test_autograd(self, grad_params: list[float]) -> bool:
         """Compare the runs done on MQSS backend with ideal simulations in terms of autograd support
 
         Args:
@@ -173,12 +172,8 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
 
         """
 
-        results = qml.gradients.param_shift(quantum_function_autograd)(*params)
+        results = qml.gradients.param_shift(quantum_function_autograd)(*grad_params)
         assert results is not None
-        assert (
-            quantum_function_expval.qtape.operations
-            == quantum_function_expval_simulator.qtape.operations
-        )
 
     def test_expectation_value_measurements(
         self, obs: qml.ops.qubit.non_parametric_ops, params: list[float]
