@@ -3,6 +3,11 @@ import pennylane as qml
 from pennylane import numpy as np
 
 
+@pytest.fixture(params=[np.array([0.1, 0.2], requires_grad=True)])
+def grad_params(request):
+    return request.param
+
+
 @pytest.fixture(
     params=[
         [np.pi / 5, np.pi],
