@@ -47,6 +47,7 @@ class MQSSPennylaneDevice(Device):
         backends: str,
         wires=None,
         shots=1024,
+        use_commuting_measurement_grouping=True,
         seed=None,
         supports_derivatives=False,
     ):
@@ -59,6 +60,7 @@ class MQSSPennylaneDevice(Device):
             shots (int, optional): Legacy attribute for number of shots. Now, shots attribute is expected at the QNode level, but this attribute stays as a legacy fallback option. Defaults to 1024.
             seed (int, optional): Defaults to None.
             supports_derivatives (bool, optional): Boolean flag for autograd support. Defaults to False.
+            use_commuting_measurement_grouping (bool, optional): Boolean flag to indicate whether to use commuting measurement grouping for Hamiltonian expectation value calculation. Defaults to True.
         """
         super().__init__(wires=wires)
 
@@ -68,6 +70,7 @@ class MQSSPennylaneDevice(Device):
         self.batch_circuits: bool = False
         self.is_multiple_obs: bool = False
         self._legacy_shots = shots
+        self.use_commuting_measurement_grouping = use_commuting_measurement_grouping
 
     def determine_measurement_type(
         self, circuit: QuantumScriptOrBatch
@@ -158,7 +161,24 @@ class MQSSPennylaneDevice(Device):
             result, circuit, shots, is_hamiltonian
         )
         return measurement
+    
+    def _merge_qwc_group(self, group):
+        """
+        Merge a qubit-wise-commuting (QWC) group of Pauli observables into a
+        single observable with exactly one Pauli operator per wire.
+        """
+        wire_to_op = {}
+        for obs in group:
+            ops = obs.operands if hasattr(obs, "operands") else [obs]
+            for op in ops:
+                wire = op.wires[0]
+                wire_to_op[wire] = op
 
+        merged_ops = list(wire_to_op.values())
+        if len(merged_ops) == 1:
+            return merged_ops[0]
+        return qml.prod(*merged_ops)  
+    
     def create_batch_circuits_for_hamiltonians(
         self, circuit: QuantumScriptOrBatch, is_hamiltonian: bool
     ) -> Union[list[QuantumScriptOrBatch], QuantumScriptOrBatch]:
@@ -181,12 +201,44 @@ class MQSSPennylaneDevice(Device):
 
         batched_circuits = []
         if is_hamiltonian:
-            observables = circuit.measurements[0].obs
+            if self.use_commuting_measurement_grouping:
+                hamiltonian = circuit.measurements[0].obs
+                coeffs = hamiltonian.coeffs
+                observables = hamiltonian.ops
+
+                groups = qml.pauli.group_observables(observables, grouping_type="qwc")
+                self.grouped_coeffs = []
+                self.grouped_observables = groups
+
+                for group in groups:
+                    group_coeffs = []
+                    for obs in group:
+                        idx = observables.index(obs)
+                        group_coeffs.append(coeffs[idx])
+                    self.grouped_coeffs.append(group_coeffs)
+                
+                for group in groups:
+                    modified_circuit = copy.deepcopy(circuit)
+                    merged_obs = self._merge_qwc_group(group)
+                    modified_circuit = self.append_measurement_gates(
+                        modified_circuit, merged_obs, is_hamiltonian
+                    )
+                    batched_circuits.append(modified_circuit)
+
+                if len(batched_circuits) > 1:
+                    self.batch_circuits = True
+                else:
+                    batched_circuits = batched_circuits[0]
+                    
+                return batched_circuits
+            else:
+                observables = circuit.measurements[0].obs
         else:
             if self.measurement_type == MeasurementType.MULTIPLE_EXPVAL:
                 observables = [measurement.obs for measurement in circuit.measurements]
             else:
                 observables = [circuit.measurements[0].obs]
+
         for obs in observables:
             modified_circuit = self.append_measurement_gates(
                 copy.deepcopy(circuit), obs, is_hamiltonian
@@ -241,8 +293,28 @@ class MQSSPennylaneDevice(Device):
             self.measurement_type == MeasurementType.EXPVAL
             or self.measurement_type == MeasurementType.EXPVAL_HAMILTONIAN
         ):
-
             final_expectation = 0
+            if is_hamiltonian and self.use_commuting_measurement_grouping:
+                for cdx, count in enumerate(counts):
+                    group = self.grouped_observables[cdx]
+                    coeffs = self.grouped_coeffs[cdx]
+
+                    if self.batch_circuits:
+                        num_qubits = len(circuits[0].wires)
+                    else:
+                        num_qubits = len(circuits.wires)
+
+                    for obs, coeff in zip(group, coeffs):
+                        if hasattr(obs, "operands"):
+                            measured_qubits = tuple(op.wires.labels[0] for op in obs.operands)
+                        else:
+                            measured_qubits = tuple([obs.wires.labels[0]])
+                        expectation = self.get_expectation_value(
+                            count, measured_qubits, num_qubits, shots
+                        )
+                        final_expectation += expectation * coeff
+                return [final_expectation]
+
             for cdx, count in enumerate(counts):
                 if self.batch_circuits:
                     measurement = circuits[0].measurements[0]
@@ -367,7 +439,7 @@ class MQSSPennylaneDevice(Device):
             QuantumScriptOrBatch: Pennylane circuit
         """
         try:
-            if is_hamiltonian:
+            if is_hamiltonian and not self.use_commuting_measurement_grouping:
                 observables = obs.base
             else:
                 observables = obs
