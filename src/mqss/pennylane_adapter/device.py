@@ -161,7 +161,24 @@ class MQSSPennylaneDevice(Device):
             result, circuit, shots, is_hamiltonian
         )
         return measurement
+    
+    def _merge_qwc_group(self, group):
+        """
+        Merge a qubit-wise-commuting (QWC) group of Pauli observables into a
+        single observable with exactly one Pauli operator per wire.
+        """
+        wire_to_op = {}
+        for obs in group:
+            ops = obs.operands if hasattr(obs, "operands") else [obs]
+            for op in ops:
+                wire = op.wires[0]
+                wire_to_op[wire] = op
 
+        merged_ops = list(wire_to_op.values())
+        if len(merged_ops) == 1:
+            return merged_ops[0]
+        return qml.prod(*merged_ops)  
+    
     def create_batch_circuits_for_hamiltonians(
         self, circuit: QuantumScriptOrBatch, is_hamiltonian: bool
     ) -> Union[list[QuantumScriptOrBatch], QuantumScriptOrBatch]:
@@ -202,11 +219,18 @@ class MQSSPennylaneDevice(Device):
                 
                 for group in groups:
                     modified_circuit = copy.deepcopy(circuit)
-                    for obs in group:
-                        modified_circuit = self.append_measurement_gates(
-                            modified_circuit, obs, is_hamiltonian
-                        )
+                    merged_obs = self._merge_qwc_group(group)
+                    modified_circuit = self.append_measurement_gates(
+                        modified_circuit, merged_obs, is_hamiltonian
+                    )
                     batched_circuits.append(modified_circuit)
+
+                if len(batched_circuits) > 1:
+                    self.batch_circuits = True
+                else:
+                    batched_circuits = batched_circuits[0]
+                    
+                return batched_circuits
             else:
                 observables = circuit.measurements[0].obs
         else:
@@ -215,13 +239,12 @@ class MQSSPennylaneDevice(Device):
             else:
                 observables = [circuit.measurements[0].obs]
 
-        if not (is_hamiltonian and self.use_commuting_measurement_grouping):
-            for obs in observables:
-                modified_circuit = self.append_measurement_gates(
-                    copy.deepcopy(circuit), obs, is_hamiltonian
-                )
-                # modified_circuit.measurements = [qml.expval(obs)]
-                batched_circuits.append(modified_circuit)
+        for obs in observables:
+            modified_circuit = self.append_measurement_gates(
+                copy.deepcopy(circuit), obs, is_hamiltonian
+            )
+            # modified_circuit.measurements = [qml.expval(obs)]
+            batched_circuits.append(modified_circuit)
         if len(batched_circuits) > 1:
             self.batch_circuits = True
 

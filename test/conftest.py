@@ -43,6 +43,10 @@ def obs(request):
             [qml.PauliZ(0)],
         ),
         (
+            [1.2, 0.3],
+            [qml.PauliX(0) @ qml.PauliX(1), qml.PauliX(0)],
+        ),
+        (
             [-0.5, -0.2, -0.2],
             [
                 qml.PauliZ(0) @ qml.PauliZ(1),
