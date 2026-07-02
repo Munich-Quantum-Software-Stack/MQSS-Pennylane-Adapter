@@ -118,16 +118,37 @@ class MQSSPennylaneDevice(Device):
         Returns:
             TensorLike: Measurement results
         """
+        if isinstance(circuits, (list, tuple)):
+            results = [
+                self._execute_single_circuit(circuit, execution_config)
+                for circuit in circuits
+            ]
+            return results[0] if len(results) == 1 else tuple(results)
+
+        return self._execute_single_circuit(circuits, execution_config)
+
+    def _execute_single_circuit(
+        self,
+        circuit: QuantumScriptOrBatch,
+        execution_config: ExecutionConfig,
+    ) -> TensorLike:
+        """Sends a single Pennylane circuit to the specified MQSS backend.
+
+        Args:
+            circuit (QuantumScriptOrBatch): Pennylane circuit
+            execution_config (ExecutionConfig): Additional config for the circuit if necessary
+
+        Returns:
+            TensorLike: Measurement results
+        """
+
         shots = (
-            circuits[0].shots.total_shots
-            if circuits[0].shots.total_shots is not None
+            circuit.shots.total_shots
+            if circuit.shots.total_shots is not None
             else self._legacy_shots
         )
         self.batch_circuits = False
-        if isinstance(circuits, list):
-            self.batch_circuits = True
 
-        circuit = circuits[0]
         self.measurement_type = self.determine_measurement_type(circuit)
         adapter = MQSSPennylaneAdapter(token=self.TOKEN, url=MQSS_URL)
         backend = adapter.get_backend(self.BACKENDS)
