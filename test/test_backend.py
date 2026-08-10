@@ -238,7 +238,6 @@ class TestPennylaneJobs(TestPennylaneAdapter):
         """
         result = quantum_function_counts(*params, wires=None)
 
-        print(result, "result test counts all wires.......................................................")
         assert result is not None
         assert all(len(key) == 2 for key in result.keys())
 
@@ -252,7 +251,7 @@ class TestPennylaneJobs(TestPennylaneAdapter):
         result = quantum_function_counts(0.0, 0.0, wires=[0], all_outcomes=True)
         assert set(result.keys()) == {"0", "1"}
  
-    def _test_compare_generated_circuits(params: list[float]) -> bool:
+    def test_compare_generated_circuits(self, params: list[float]) -> bool:
         """Compare the runs done on LRZ backend with ideal simulations.
  
         Args:
@@ -313,7 +312,7 @@ class TestPennylaneJobs(TestPennylaneAdapter):
         ],
     )
     @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
-    def _test_hamiltonian_measurements(
+    def test_hamiltonian_measurements(
         params: list[float],
         coeffs: list[float],
         obs: list[qml.ops.qubit.non_parametric_ops],

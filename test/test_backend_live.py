@@ -11,7 +11,8 @@ dev_multiple = MQSSPennylaneDevice(wires=4, token=MQSS_TOKEN, backends=MQSS_BACK
 dev_simulator = qml.device("default.qubit", wires=2)
 dev_hamiltonian = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_hamiltonian_simulator = qml.device("default.qubit", wires=2)
-dev_counts = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS, shots=10)
+dev_counts = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS, shots=1024)
+dev_counts_simulator = qml.device("default.qubit", wires=2, shots=1024)
 
 dev_autograd = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_probs = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
@@ -52,8 +53,40 @@ def quantum_function_probs(x: float, y: float) -> np.ndarray:
 
 @qml.qnode(dev_counts)
 def quantum_function_counts(x: float, y: float, wires= None, all_outcomes: bool = False):
+    """
+    The function `quantum_function_counts` applies an arbitrary quantum function to qubits and returns
+    the observed bitstring counts.
+ 
+    :param x: The parameter `x` represents the angle for the rotation gate
+    `RZ` applied on the qubit at wire 0
+    :param y: The parameter `y` represents the angle parameter for
+    the rotation gate `RY` at wire 1.
+    :param wires: The wires to return counts for. Counts over all wires are returned when `None`.
+    :param all_outcomes: Whether to include unobserved outcomes with a count of zero.
+    :return: A dictionary mapping observed bitstrings to their number of occurrences.
+    """
     arbitrary_quantum_circuit(x,y)
     return qml.counts(wires=wires, all_outcomes=all_outcomes)
+
+@qml.qnode(dev_counts_simulator)
+def quantum_function_counts_simulator(
+    x: float, y: float, wires=None, all_outcomes: bool = False
+) -> dict:
+    """
+    The function `quantum_function_counts_simulator` applies an arbitrary quantum function to qubits
+    and returns the observed bitstring counts. Implemented to be done on the Pennylane simulator.
+ 
+    :param x: The parameter `x` represents the angle for the rotation gate
+    `RZ` applied on the qubit at wire 0
+    :param y: The parameter `y` represents the angle parameter for
+    the rotation gate `RY` at wire 1.
+    :param wires: The wires to return counts for. Counts over all wires are returned when `None`.
+    :param all_outcomes: Whether to include unobserved outcomes with a count of zero.
+    :return: A dictionary mapping observed bitstrings to their number of occurrences.
+    """
+    arbitrary_quantum_circuit(x, y)
+    return qml.counts(wires=wires, all_outcomes=all_outcomes)
+
 
 @qml.qnode(dev)
 def quantum_function_expval(x: float, y: float) -> float:
@@ -151,7 +184,7 @@ def quantum_function_hamiltonian_expval_simulator(
 class TestPennylaneLiveJobs(TestPennylaneAdapter):
 
     @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
-    def _test_compare_generated_circuits(self, params: list[float]) -> bool:
+    def test_compare_generated_circuits(self, params: list[float]) -> bool:
         """Compare the depths of the circuits generated for the same quantum function on the MQSS backend and the Pennylane simulator
 
         Args:
@@ -194,10 +227,11 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
             params (list[float]): List of parameters to the quantum circuit
         """
         result = quantum_function_counts(*params, wires=[0])
+
         assert result is not None
         assert all(len(key) == 1 for key in result.keys())
         
-        assert sum(result.values()) == 10
+        assert sum(result.values()) == dev_counts._legacy_shots
  
     @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
     def test_counts_all_wires(self, params: list[float]) -> None:
@@ -212,7 +246,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         assert result is not None
         assert all(len(key) == 2 for key in result.keys())
 
-        assert sum(result.values()) == 10
+        assert sum(result.values()) == dev_counts._legacy_shots
  
     def test_counts_all_outcomes(self) -> None:
         """With all_outcomes=True, every possible bitstring for the requested
@@ -221,8 +255,26 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         """
         result = quantum_function_counts(0.0, 0.0, wires=[0], all_outcomes=True)
         assert set(result.keys()) == {"0", "1"}
+        assert sum(result.values()) == dev_counts._legacy_shots
 
-    def _test_expectation_value_measurements(
+    def test_counts_matches_simulator(self, params: list[float]):
+        """Compare the empirical distribution of counts from the MQSS backend
+        against the Pennylane simulator."""
+        x, y = params
+        result = quantum_function_counts(x, y)
+        result_simulator = quantum_function_counts_simulator(x, y)
+ 
+        shots = dev_counts._legacy_shots
+        empirical_probs = {key: value / shots for key, value in result.items()}
+        simulator_probs = {
+            str(key): value / shots for key, value in result_simulator.items()
+        }
+ 
+        for bitstring, probability in simulator_probs.items():
+            assert abs(empirical_probs.get(bitstring, 0) - probability) <= 3e-1
+
+
+    def test_expectation_value_measurements(
         self, obs: qml.ops.qubit.non_parametric_ops, params: list[float]
     ):
         """Run a quantum circuit with an expectation value measurement and compare the results with the simulator."""
@@ -233,7 +285,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         assert result is not None
         assert abs(result - result_simulator) <= 3e-1
 
-    def _test_hamiltonian_measurements(
+    def test_hamiltonian_measurements(
         self,
         hamiltonian_data: tuple[list[float], list[qml.ops.qubit.non_parametric_ops]],
         params: list[float],
@@ -262,7 +314,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         assert result is not None
         assert abs(result - result_simulator) <= 3e-1
 
-    def _test_probs(self, params: list[float]):
+    def test_probs(self, params: list[float]):
         """Test that we can get probabilities back from the device"""
         x, y = params
         result = quantum_function_probs(x, y)
@@ -272,7 +324,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         assert abs(sum(result) - 1) <= 1e-6
         assert all(0 <= p <= 1 for p in result)
 
-    def _test_multiple_expvals(
+    def test_multiple_expvals(
         self, list_obs: list[qml.ops.qubit.non_parametric_ops], params: list[float]
     ):
         """Test that we can get multiple expectation values back from the device"""
