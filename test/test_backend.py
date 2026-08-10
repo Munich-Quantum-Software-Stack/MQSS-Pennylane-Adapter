@@ -16,6 +16,7 @@ from mqss_client import (
 
 dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_single = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
+dev_counts = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS, shots=10)
 dev_simulator = qml.device("default.qubit", wires=2)
 dev_hamiltonian = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_hamiltonian_simulator = qml.device("default.qubit", wires=2)
@@ -71,6 +72,11 @@ def quantum_function_expval_single_pauli(x: float, y: float) -> float:
     """
     arbitrary_quantum_circuit(x, y)
     return qml.expval(qml.PauliX(0))
+
+@qml.qnode(dev_counts)
+def quantum_function_counts(x: float, y: float, wires= None, all_outcomes: bool = False):
+    arbitrary_quantum_circuit(x,y)
+    return qml.counts(wires=wires, all_outcomes=all_outcomes)
 
 
 @qml.qnode(dev_autograd, interface="autograd", diff_method="parameter-shift")
@@ -207,6 +213,61 @@ class TestPennylaneJobs(TestPennylaneAdapter):
         """
         result = quantum_function_expval_single_pauli(*params)
         assert result is not None
+ 
+    @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
+    def test_counts_single_wire(self, params: list[float]) -> None:
+        """Requesting counts for a single wire should return single-character
+        bitstring keys whose counts sum to the total number of shots.
+ 
+        Args:
+            params (list[float]): List of parameters to the quantum circuit
+        """
+        result = quantum_function_counts(*params, wires=[0])
+        assert result is not None
+        assert all(len(key) == 1 for key in result.keys())
+        
+        assert sum(result.values()) == 1000
+ 
+    @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
+    def test_counts_all_wires(self, params: list[float]) -> None:
+        """Requesting counts without specifying wires should return the full
+        two-wire bitstring, summing to the total number of shots.
+ 
+        Args:
+            params (list[float]): List of parameters to the quantum circuit
+        """
+        result = quantum_function_counts(*params, wires=None)
+
+        print(result, "result test counts all wires.......................................................")
+        assert result is not None
+        assert all(len(key) == 2 for key in result.keys())
+
+        assert sum(result.values()) == 1000
+ 
+    def test_counts_all_outcomes(self) -> None:
+        """With all_outcomes=True, every possible bitstring for the requested
+        wires should be present in the result, even those that were never
+        observed.
+        """
+        result = quantum_function_counts(0.0, 0.0, wires=[0], all_outcomes=True)
+        assert set(result.keys()) == {"0", "1"}
+ 
+    def _test_compare_generated_circuits(params: list[float]) -> bool:
+        """Compare the runs done on LRZ backend with ideal simulations.
+ 
+        Args:
+ 
+            params (list[float]): List of parameters to the quantum circuit
+ 
+        """
+        _ = quantum_function_expval_simulator(*params)
+        _ = quantum_function_expval(*params)
+ 
+        assert (
+            quantum_function_expval.qtape.operations
+            == quantum_function_expval_simulator.qtape.operations
+        )
+ 
 
     def _test_compare_generated_circuits(params: list[float]) -> bool:
         """Compare the runs done on LRZ backend with ideal simulations.

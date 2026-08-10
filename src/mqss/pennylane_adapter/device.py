@@ -21,6 +21,7 @@ class MeasurementType(Enum):
     STATE = auto()
     UNKNOWN = auto()
     MULTIPLE_EXPVAL = auto()
+    COUNTS = auto()
 
 
 class MQSSPennylaneDevice(Device):
@@ -96,7 +97,8 @@ class MQSSPennylaneDevice(Device):
                 return MeasurementType.EXPVAL_HAMILTONIAN
             else:
                 return MeasurementType.EXPVAL
-
+        elif isinstance(measurement, qml.measurements.CountsMP):
+            return MeasurementType.COUNTS
         elif isinstance(measurement, qml.measurements.SampleMP):
             return MeasurementType.SAMPLE
         elif isinstance(measurement, qml.measurements.StateMP):
@@ -381,6 +383,19 @@ class MQSSPennylaneDevice(Device):
 
                 final_expectation.append(expectation)
             return [final_expectation]
+        elif self.measurement_type == MeasurementType.COUNTS:
+            measurement = []
+            if self.batch_circuits:
+                measurement_process = circuits[0].measurements[0]
+                num_qubits = len(circuits[0].wires)
+            else:
+                measurement_process = circuits.measurements[0]
+                num_qubits = len(circuits.wires)
+            for count in counts:
+                measurement.append(
+                    self.get_counts_dict(count, measurement_process, num_qubits)
+                )
+            return measurement
         elif self.measurement_type == MeasurementType.SAMPLE:
             raise NotImplementedError
         elif self.measurement_type == MeasurementType.STATE:
@@ -426,6 +441,23 @@ class MQSSPennylaneDevice(Device):
 
         return expectation
 
+    def get_counts_dict(self, count: TensorLike, measurement: qml.measurements.CountsMP, num_qubits: int,) -> dict[str, int]:
+        measured_wires = (list(measurement.wires.labels) if measurement.wires else list(range(num_qubits)))
+
+        outcomes: dict[str, int] = {}
+        if measurement.all_outcomes:
+            for i in range (2** len(measured_wires)):
+                outcomes[int2bit(i, len(measured_wires))] = 0
+        
+        for idx, value in enumerate(count):
+            if value == 0:
+                continue
+            bitstring = int2bit(idx, num_qubits)
+            sub_bitstring = "".join(bitstring[wire] for wire in measured_wires)
+            outcomes[sub_bitstring] = outcomes.get(sub_bitstring, 0) + int(value)
+
+        return outcomes
+    
     def append_measurement_gates(
         self, circuits: QuantumScriptOrBatch, obs: qml.ops, is_hamiltonian: bool
     ) -> QuantumScriptOrBatch:
