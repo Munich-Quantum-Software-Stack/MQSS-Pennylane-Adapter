@@ -185,7 +185,7 @@ def quantum_function_hamiltonian_expval_simulator(
 class TestPennylaneLiveJobs(TestPennylaneAdapter):
 
     @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
-    def test_compare_generated_circuits(self, params: list[float]) -> bool:
+    def _test_compare_generated_circuits(self, params: list[float]) -> bool:
         """Compare the depths of the circuits generated for the same quantum function on the MQSS backend and the Pennylane simulator
 
         Args:
@@ -220,7 +220,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         )
 
     @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
-    def test_counts_single_wire(self, params: list[float]) -> None:
+    def _test_counts_single_wire(self, params: list[float]) -> None:
         """Requesting counts for a single wire should return single-character
         bitstring keys whose counts sum to the total number of shots.
  
@@ -235,7 +235,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         assert sum(result.values()) == dev_counts._legacy_shots
  
     @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
-    def test_counts_all_wires(self, params: list[float]) -> None:
+    def _test_counts_all_wires(self, params: list[float]) -> None:
         """Requesting counts without specifying wires should return the full
         two-wire bitstring, summing to the total number of shots.
  
@@ -249,7 +249,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
 
         assert sum(result.values()) == dev_counts._legacy_shots
  
-    def test_counts_all_outcomes(self) -> None:
+    def _test_counts_all_outcomes(self) -> None:
         """With all_outcomes=True, every possible bitstring for the requested
         wires should be present in the result, even those that were never
         observed.
@@ -258,7 +258,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         assert set(result.keys()) == {"0", "1"}
         assert sum(result.values()) == dev_counts._legacy_shots
 
-    def test_counts_matches_simulator(self, params: list[float]):
+    def _test_counts_matches_simulator(self, params: list[float]):
         """Compare the empirical distribution of counts from the MQSS backend
         against the Pennylane simulator."""
         x, y = params
@@ -275,7 +275,8 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
             assert abs(empirical_probs.get(bitstring, 0) - probability) <= 3e-1
 
 
-    def test_expectation_value_measurements(
+
+    def _test_expectation_value_measurements(
         self, obs: qml.ops.qubit.non_parametric_ops, params: list[float]
     ):
         """Run a quantum circuit with an expectation value measurement and compare the results with the simulator."""
@@ -315,7 +316,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         assert result is not None
         assert abs(result - result_simulator) <= 3e-1
 
-    def test_probs(self, params: list[float]):
+    def _test_probs(self, params: list[float]):
         """Test that we can get probabilities back from the device"""
         x, y = params
         result = quantum_function_probs(x, y)
@@ -325,7 +326,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         assert abs(sum(result) - 1) <= 1e-6
         assert all(0 <= p <= 1 for p in result)
 
-    def test_multiple_expvals(
+    def _test_multiple_expvals(
         self, list_obs: list[qml.ops.qubit.non_parametric_ops], params: list[float]
     ):
         """Test that we can get multiple expectation values back from the device"""

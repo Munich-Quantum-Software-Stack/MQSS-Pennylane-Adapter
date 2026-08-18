@@ -30,6 +30,9 @@ CURRENT_RESOURCES = {
     "EQE1": ResourceInfo(
         name="EQE1", qubits=54, online=True, connectivity=None, instructions=None
     ),
+    "MAQCS": ResourceInfo(
+            name="MAQCS", qubits=12, online=True, connectivity=None, instructions=None
+        ),
 }
 
 QASM_FILE = "test/example.qasm"
