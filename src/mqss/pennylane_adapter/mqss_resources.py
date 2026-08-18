@@ -1,12 +1,17 @@
 """MQP Resources"""
 
-from qiskit.circuit.library import Measure  # type: ignore
-from qiskit.circuit.library import RXGate  # type: ignore
-from qiskit.circuit.library import CZGate, IGate, RGate, RXXGate, RZGate  # type: ignore
+from mqss_client import ResourceInfo  # type: ignore
+from qiskit.circuit.library import (  # type: ignore
+    CZGate,
+    IGate,
+    Measure,  # type: ignore
+    RGate,
+    RXGate,  # type: ignore
+    RXXGate,
+    RZGate,
+)
 from qiskit.circuit.parameter import Parameter  # type: ignore
 from qiskit.transpiler import CouplingMap, Target  # type: ignore
-
-from mqss_client import ResourceInfo  # type: ignore
 
 
 def get_coupling_map(resource_info: ResourceInfo):

@@ -1,18 +1,19 @@
-import pennylane as qml
-
-import pytest
-from src.mqss.pennylane_adapter.config import MQSS_TOKEN, MQSS_BACKENDS
-from src.mqss.pennylane_adapter.device import MQSSPennylaneDevice
-from pennylane import numpy as np
-from .pennylane_adapter_tests_base import TestPennylaneAdapter
-from .mocks import MOCK_JOB_DATA
-
-from datetime import datetime
 import json
+from datetime import UTC, datetime
+
+import pennylane as qml
+import pytest
 from mqss_client import (
     MQSSClient,
     Result,
 )
+from pennylane import numpy as np
+
+from src.mqss.pennylane_adapter.config import MQSS_BACKENDS, MQSS_TOKEN
+from src.mqss.pennylane_adapter.device import MQSSPennylaneDevice
+
+from .mocks import MOCK_JOB_DATA
+from .pennylane_adapter_tests_base import TestPennylaneAdapter
 
 dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_single = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
@@ -175,13 +176,13 @@ class TestPennylaneJobs(TestPennylaneAdapter):
                 counts=json.loads(result_json["result"]),
                 timestamp_completed=datetime.strptime(
                     result_json["timestamp_completed"], "%Y-%m-%d %H:%M:%S.%f"
-                ),
+                ).replace(tzinfo=UTC),
                 timestamp_submitted=datetime.strptime(
                     result_json["timestamp_submitted"], "%Y-%m-%d %H:%M:%S.%f"
-                ),
+                ).replace(tzinfo=UTC),
                 timestamp_scheduled=datetime.strptime(
                     result_json["timestamp_scheduled"], "%Y-%m-%d %H:%M:%S.%f"
-                ),
+                ).replace(tzinfo=UTC),
             )
 
         monkeypatch.setattr(MQSSClient, "wait_for_job_result", mock_job_result)
@@ -224,7 +225,7 @@ class TestPennylaneJobs(TestPennylaneAdapter):
         """
         result = quantum_function_counts(*params, wires=[0])
         assert result is not None
-        assert all(len(key) == 1 for key in result.keys())
+        assert all(len(key) == 1 for key in result)
         
         assert sum(result.values()) == 1000
  
@@ -239,7 +240,7 @@ class TestPennylaneJobs(TestPennylaneAdapter):
         result = quantum_function_counts(*params, wires=None)
 
         assert result is not None
-        assert all(len(key) == 2 for key in result.keys())
+        assert all(len(key) == 2 for key in result)
 
         assert sum(result.values()) == 1000
  
@@ -313,6 +314,7 @@ class TestPennylaneJobs(TestPennylaneAdapter):
     )
     @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
     def test_hamiltonian_measurements(
+        self,
         params: list[float],
         coeffs: list[float],
         obs: list[qml.ops.qubit.non_parametric_ops],
@@ -336,4 +338,5 @@ class TestPennylaneJobs(TestPennylaneAdapter):
             print(
                 f"There was an error while measuring the expectation value of the hamiltonian, with the following error: {e}"
             )
+            raise
         assert abs(result - result_simulator) <= 1e-1

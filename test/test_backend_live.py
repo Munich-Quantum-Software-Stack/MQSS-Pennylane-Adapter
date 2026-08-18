@@ -1,9 +1,10 @@
 import pennylane as qml
-
 import pytest
-from src.mqss.pennylane_adapter.config import MQSS_TOKEN, MQSS_BACKENDS
-from src.mqss.pennylane_adapter.device import MQSSPennylaneDevice
 from pennylane import numpy as np
+
+from src.mqss.pennylane_adapter.config import MQSS_BACKENDS, MQSS_TOKEN
+from src.mqss.pennylane_adapter.device import MQSSPennylaneDevice
+
 from .pennylane_adapter_tests_base import TestPennylaneAdapter
 
 dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
@@ -229,7 +230,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         result = quantum_function_counts(*params, wires=[0])
 
         assert result is not None
-        assert all(len(key) == 1 for key in result.keys())
+        assert all(len(key) == 1 for key in result)
         
         assert sum(result.values()) == dev_counts._legacy_shots
  
@@ -244,7 +245,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         result = quantum_function_counts(*params, wires=None)
 
         assert result is not None
-        assert all(len(key) == 2 for key in result.keys())
+        assert all(len(key) == 2 for key in result)
 
         assert sum(result.values()) == dev_counts._legacy_shots
  
@@ -309,7 +310,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
             print(
                 f"There was an error while measuring the expectation value of the hamiltonian, with the following error: {e}"
             )
-            raise e
+            raise
 
         assert result is not None
         assert abs(result - result_simulator) <= 3e-1

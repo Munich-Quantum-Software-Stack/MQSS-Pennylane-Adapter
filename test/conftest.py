@@ -1,5 +1,5 @@
-import pytest
 import pennylane as qml
+import pytest
 from pennylane import numpy as np
 
 

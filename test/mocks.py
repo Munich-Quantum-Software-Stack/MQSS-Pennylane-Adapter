@@ -6,7 +6,7 @@ from .config import CURRENT_RESOURCES
 
 # =================== MOCK DATA ===================
 MOCK_RESOURCES = {
-    key: CURRENT_RESOURCES[key].__dict__ for key in CURRENT_RESOURCES.keys()
+    key: CURRENT_RESOURCES[key].__dict__ for key in CURRENT_RESOURCES
 }
 
 MOCK_JOB_DATA = {
