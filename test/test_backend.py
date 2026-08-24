@@ -1,22 +1,12 @@
 import json
 from datetime import UTC, datetime
 
-import json
-from datetime import UTC, datetime
-
 import pennylane as qml
 import pytest
 from mqss_client import (
     MQSSClient,
     Result,
 )
-from pennylane import numpy as np
-
-from src.mqss.pennylane_adapter.config import MQSS_BACKENDS, MQSS_TOKEN
-from src.mqss.pennylane_adapter.device import MQSSPennylaneDevice
-
-from .mocks import MOCK_JOB_DATA
-from .pennylane_adapter_tests_base import TestPennylaneAdapter
 from pennylane import numpy as np
 
 from src.mqss.pennylane_adapter.config import MQSS_BACKENDS, MQSS_TOKEN
@@ -206,14 +196,11 @@ class TestPennylaneJobs(TestPennylaneAdapter):
                 timestamp_completed=datetime.strptime(
                     result_json["timestamp_completed"], "%Y-%m-%d %H:%M:%S.%f"
                 ).replace(tzinfo=UTC),
-                ).replace(tzinfo=UTC),
                 timestamp_submitted=datetime.strptime(
                     result_json["timestamp_submitted"], "%Y-%m-%d %H:%M:%S.%f"
                 ).replace(tzinfo=UTC),
-                ).replace(tzinfo=UTC),
                 timestamp_scheduled=datetime.strptime(
                     result_json["timestamp_scheduled"], "%Y-%m-%d %H:%M:%S.%f"
-                ).replace(tzinfo=UTC),
                 ).replace(tzinfo=UTC),
             )
 
@@ -258,7 +245,6 @@ class TestPennylaneJobs(TestPennylaneAdapter):
         result = quantum_function_counts(*params, wires=[0])
         assert result is not None
         assert all(len(key) == 1 for key in result)
-        assert all(len(key) == 1 for key in result)
         
         assert sum(result.values()) == 1000
  
@@ -273,7 +259,6 @@ class TestPennylaneJobs(TestPennylaneAdapter):
         result = quantum_function_counts(*params, wires=None)
 
         assert result is not None
-        assert all(len(key) == 2 for key in result)
         assert all(len(key) == 2 for key in result)
 
         assert sum(result.values()) == 1000
