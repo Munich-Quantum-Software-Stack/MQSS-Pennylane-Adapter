@@ -12,7 +12,7 @@ from pennylane import numpy as np
 from src.mqss.pennylane_adapter.config import MQSS_BACKENDS, MQSS_TOKEN
 from src.mqss.pennylane_adapter.device import MQSSPennylaneDevice
 
-from .mocks import MOCK_JOB_DATA
+from .mocks import MOCK_JOB_DATA, MOCK_RESULTS
 from .pennylane_adapter_tests_base import TestPennylaneAdapter
 
 dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
@@ -169,6 +169,7 @@ class TestPennylaneJobs(TestPennylaneAdapter):
     def patch_job_result(self, monkeypatch, request):
 
         test_name = request.function.__name__
+        node_id = request.node.name  # includes the parametrize suffix, e.g. "[params1]"
 
         test_types = {
             "test_compare_runs": "normal",
@@ -184,12 +185,15 @@ class TestPennylaneJobs(TestPennylaneAdapter):
             "test_compare_generated_circuits": "normal",
         }
         test_type = test_types.get(test_name, "normal")
-    
+
         def mock_job_result(self, uuid, job_type):
 
-            # Just always return the MOCK_JOB_DATA for the fixed UUID and job type key
+            # Prefer a result captured for this exact parametrization; fall
+            # back to the generic per-test-type default otherwise.
             key = f"job/{uuid}/result"  # or hardcode if you want
-            result_json = MOCK_JOB_DATA[test_type].get(key)
+            default_result_json = MOCK_JOB_DATA[test_type].get(key)
+            result_json = MOCK_RESULTS.get(node_id, default_result_json)
+            
             # Construct Result without any checks
             return Result(
                 counts=json.loads(result_json["result"]),
@@ -245,8 +249,8 @@ class TestPennylaneJobs(TestPennylaneAdapter):
         result = quantum_function_counts(*params, wires=[0])
         assert result is not None
         assert all(len(key) == 1 for key in result)
-        
-        assert sum(result.values()) == 1000
+
+        assert sum(result.values()) == 1024
  
     @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
     def test_counts_all_wires(self, params: list[float]) -> None:
@@ -261,7 +265,7 @@ class TestPennylaneJobs(TestPennylaneAdapter):
         assert result is not None
         assert all(len(key) == 2 for key in result)
 
-        assert sum(result.values()) == 1000
+        assert sum(result.values()) == 1024
  
     def test_counts_all_outcomes(self) -> None:
         """With all_outcomes=True, every possible bitstring for the requested
@@ -271,7 +275,7 @@ class TestPennylaneJobs(TestPennylaneAdapter):
         result = quantum_function_counts(0.0, 0.0, wires=[0], all_outcomes=True)
         assert set(result.keys()) == {"0", "1"}
  
-    def _test_compare_generated_circuits(self, params: list[float]) -> bool:
+    def test_compare_generated_circuits(self, params: list[float]) -> bool:
         """Compare the runs done on LRZ backend with ideal simulations.
  
         Args:
@@ -283,12 +287,12 @@ class TestPennylaneJobs(TestPennylaneAdapter):
         _ = quantum_function_expval(*params)
  
         assert (
-            quantum_function_expval.qtape.operations
-            == quantum_function_expval_simulator.qtape.operations
+            quantum_function_expval._tape.operations
+            == quantum_function_expval_simulator._tape.operations
         )
 
-    @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
-    def _test_autograd(params: list[float]) -> bool:
+    
+    def _test_autograd(self, params: list[float]) -> bool:
         """Compare the runs done on LRZ backend with ideal simulations in d
 
         Args:
@@ -299,8 +303,8 @@ class TestPennylaneJobs(TestPennylaneAdapter):
 
         _ = qml.gradients.param_shift(quantum_function_autograd)(*params)
         assert (
-            quantum_function_expval.qtape.operations
-            == quantum_function_expval_simulator.qtape.operations
+            quantum_function_expval._tape.operations
+            == quantum_function_expval_simulator._tape.operations
         )
 
    

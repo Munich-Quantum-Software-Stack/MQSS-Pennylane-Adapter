@@ -5,9 +5,8 @@ from pennylane import numpy as np
 
 @pytest.fixture(
     params=[
-        [np.pi / 5, np.pi],
-        # [np.pi / 3, np.pi / 17],
-        # [np.pi * 13 / 12, np.pi / 8],
+        [2 * np.pi / 7, np.pi/8],
+        [0,0],
     ]
 )
 def params(request):
@@ -34,10 +33,10 @@ def obs(request):
                 qml.PauliY(0) @ qml.PauliZ(1),
             ],
         ),
-        # (
-        #     [1.5],
-        #     [qml.PauliZ(0) @ qml.PauliX(1)],
-        # ),
+        (
+            [1.5],
+            [qml.PauliZ(0) @ qml.PauliX(1)],
+        ),
         # (
         #     [1.5],
         #     [qml.PauliZ(0)],
@@ -46,14 +45,14 @@ def obs(request):
         #     [1.2, 0.3],
         #     [qml.PauliX(0) @ qml.PauliX(1), qml.PauliX(0)],
         # ),
-        # (
-        #     [-0.5, -0.2, -0.2],
-        #     [
-        #         qml.PauliZ(0) @ qml.PauliZ(1),
-        #         qml.PauliX(0),
-        #         qml.PauliX(1),
-        #     ],
-        # ),
+        (
+            [0.8, -0.2, -0.2],
+            [
+                qml.PauliZ(0) @ qml.PauliZ(1),
+                qml.PauliX(0),
+                qml.PauliX(1),
+            ],
+        ),
     ]
 )
 def hamiltonian_data(request):

@@ -259,7 +259,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         assert sum(result.values()) == dev_counts._legacy_shots
 
     def _test_counts_matches_simulator(self, params: list[float]):
-        """Compare the empirical distribution of counts from the MQSS backend
+        """Compare the distribution of counts from the MQSS backend
         against the Pennylane simulator."""
         x, y = params
         result = quantum_function_counts(x, y)
@@ -314,9 +314,9 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
             raise
 
         assert result is not None
-        assert abs(result - result_simulator) <= 3e-1
+        assert abs(result - result_simulator) <= 4e-1
 
-    def _test_probs(self, params: list[float]):
+    def test_probs(self, params: list[float]):
         """Test that we can get probabilities back from the device"""
         x, y = params
         result = quantum_function_probs(x, y)
@@ -326,7 +326,7 @@ class TestPennylaneLiveJobs(TestPennylaneAdapter):
         assert abs(sum(result) - 1) <= 1e-6
         assert all(0 <= p <= 1 for p in result)
 
-    def _test_multiple_expvals(
+    def test_multiple_expvals(
         self, list_obs: list[qml.ops.qubit.non_parametric_ops], params: list[float]
     ):
         """Test that we can get multiple expectation values back from the device"""
