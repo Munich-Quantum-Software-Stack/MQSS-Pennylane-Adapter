@@ -1,10 +1,9 @@
 """MQPJob Module"""
 
+from mqss_client import CircuitJobRequest, JobStatus, MQSSClient  # type: ignore
 from qiskit.providers import JobStatus as QiskitJobStatus  # type: ignore
 from qiskit.providers import JobV1  # type: ignore
 from qiskit.result import Counts, Result  # type: ignore
-
-from mqss_client import JobStatus, MQSSClient, CircuitJobRequest  # type: ignore
 
 
 class MQPJob(JobV1):

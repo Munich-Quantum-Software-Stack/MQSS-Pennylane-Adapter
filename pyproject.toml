@@ -30,5 +30,7 @@ dev = [
     "mkdocs-autorefs>=1.4.1",
     "mkdocs-material>=9.6.9",
     "mkdocstrings[python]>=0.29.0",
+    "pre-commit>=4.6.2",
     "pytest>=8.3.3",
+    "ruff>=0.16.3",
 ]

@@ -1,14 +1,13 @@
+import pennylane as qml
 import pytest
 
-
-import pennylane as qml
 from .config import CURRENT_RESOURCES
 
 
 @pytest.fixture
 def resource_name():
     """Fixture to provide a valid resource name for tests"""
-    return list(CURRENT_RESOURCES.keys())[0]
+    return next(iter(CURRENT_RESOURCES.keys()))
 
 
 class TestPennylaneAdapter:

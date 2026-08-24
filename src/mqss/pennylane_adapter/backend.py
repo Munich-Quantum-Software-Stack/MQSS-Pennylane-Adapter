@@ -1,12 +1,11 @@
-from .job import MQPJob
-from typing import Optional, Union
+
 import pennylane as qml
-from qiskit.transpiler import CouplingMap, Target
-from pennylane.tape import QuantumTape, QuantumScript, QuantumScriptOrBatch
-
+from mqss_client import CircuitJobRequest, MQSSClient, ResourceInfo  # type: ignore
+from pennylane.tape import QuantumScript, QuantumScriptOrBatch, QuantumTape
 from qiskit.providers import BackendV2, Options  # type: ignore
+from qiskit.transpiler import CouplingMap, Target
 
-from mqss_client import MQSSClient, CircuitJobRequest, ResourceInfo  # type: ignore
+from .job import MQPJob
 from .mqss_resources import get_coupling_map, get_target
 
 
@@ -17,7 +16,7 @@ class MQSSPennylaneBackend(BackendV2):
         self,
         name: str,
         client: MQSSClient,
-        resource_info: Optional[ResourceInfo] = None,
+        resource_info: ResourceInfo | None = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -51,12 +50,12 @@ class MQSSPennylaneBackend(BackendV2):
         return self._target
 
     @property
-    def max_circuits(self) -> Optional[int]:
+    def max_circuits(self) -> int | None:
         return None
 
     def run(
         self,
-        run_input: Union[QuantumScript, QuantumTape] | QuantumScriptOrBatch,
+        run_input: QuantumScript | QuantumTape | QuantumScriptOrBatch,
         shots: int = 1024,
         no_modify: bool = False,
         queued: bool = False,
@@ -72,7 +71,7 @@ class MQSSPennylaneBackend(BackendV2):
         Returns:
             MQPJob: Returns the MQPJob object
         """
-        if isinstance(run_input, QuantumTape) or isinstance(run_input, QuantumScript):
+        if isinstance(run_input, (QuantumTape, QuantumScript)):
             _circuits = str([qml.to_openqasm(run_input, rotations=False)])
         else:
             _circuits = str([qml.to_openqasm(qc, rotations=False) for qc in run_input])

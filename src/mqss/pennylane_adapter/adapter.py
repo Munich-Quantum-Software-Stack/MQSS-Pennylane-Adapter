@@ -1,8 +1,6 @@
-from typing import Optional
-
-from qiskit.providers import ProviderV1  # type: ignore
 
 from mqss_client import MQSSClient  # type: ignore
+from qiskit.providers import ProviderV1  # type: ignore
 
 from .backend import MQSSPennylaneBackend
 
@@ -10,7 +8,7 @@ from .backend import MQSSPennylaneBackend
 class MQSSPennylaneAdapter(ProviderV1):
     """MQSS Pennylane Adapter Class"""
 
-    def __init__(self, token: str, url: Optional[str] = None) -> None:
+    def __init__(self, token: str, url: str | None = None) -> None:
         if url:
             self._client = MQSSClient(base_url=url, token=token)
         else:

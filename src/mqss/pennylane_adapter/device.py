@@ -1,16 +1,16 @@
+import copy
+from enum import Enum, auto
+
+import pennylane as qml
+from pennylane import numpy as np
 from pennylane.devices import Device, ExecutionConfig
 from pennylane.tape import QuantumScriptOrBatch
-
-from pennylane import numpy as np
 from pennylane.typing import TensorLike
-from typing import Union, Tuple
-import copy
-import pennylane as qml
+
 from mqss.pennylane_adapter.adapter import MQSSPennylaneAdapter
 from mqss.pennylane_adapter.config import MQSS_URL
-from .utils import int2bit, bit2int, supports_operation, operations
 
-from enum import Enum, auto
+from .utils import bit2int, int2bit, operations, supports_operation
 
 
 class MeasurementType(Enum):
@@ -21,6 +21,7 @@ class MeasurementType(Enum):
     STATE = auto()
     UNKNOWN = auto()
     MULTIPLE_EXPVAL = auto()
+    COUNTS = auto()
 
 
 class MQSSPennylaneDevice(Device):
@@ -96,7 +97,8 @@ class MQSSPennylaneDevice(Device):
                 return MeasurementType.EXPVAL_HAMILTONIAN
             else:
                 return MeasurementType.EXPVAL
-
+        elif isinstance(measurement, qml.measurements.CountsMP):
+            return MeasurementType.COUNTS
         elif isinstance(measurement, qml.measurements.SampleMP):
             return MeasurementType.SAMPLE
         elif isinstance(measurement, qml.measurements.StateMP):
@@ -106,7 +108,7 @@ class MQSSPennylaneDevice(Device):
 
     def execute(
         self,
-        circuits: Tuple[QuantumScriptOrBatch] | QuantumScriptOrBatch,
+        circuits: tuple[QuantumScriptOrBatch] | QuantumScriptOrBatch,
         execution_config: ExecutionConfig,
     ) -> TensorLike:
         """Sends the Pennylane circuit to the specified MQSS backend.
@@ -181,7 +183,7 @@ class MQSSPennylaneDevice(Device):
     
     def create_batch_circuits_for_hamiltonians(
         self, circuit: QuantumScriptOrBatch, is_hamiltonian: bool
-    ) -> Union[list[QuantumScriptOrBatch], QuantumScriptOrBatch]:
+    ) -> list[QuantumScriptOrBatch] | QuantumScriptOrBatch:
         """Creates a batched job where there is a Hamiltonian expectation value calculation as measurement
 
         Args:
@@ -271,7 +273,7 @@ class MQSSPennylaneDevice(Device):
         circuits: QuantumScriptOrBatch,
         shots: int,
         is_hamiltonian: bool,
-    ) -> Union[list[TensorLike], Union[TensorLike, list[float]]]:
+    ) -> list[TensorLike] | TensorLike | list[float]:
         """Given a measurement type (e.g. probs, exp. val.), return the measurement result.
 
         Args:
@@ -308,7 +310,7 @@ class MQSSPennylaneDevice(Device):
                         if hasattr(obs, "operands"):
                             measured_qubits = tuple(op.wires.labels[0] for op in obs.operands)
                         else:
-                            measured_qubits = tuple([obs.wires.labels[0]])
+                            measured_qubits = (obs.wires.labels[0],)
                         expectation = self.get_expectation_value(
                             count, measured_qubits, num_qubits, shots
                         )
@@ -338,7 +340,7 @@ class MQSSPennylaneDevice(Device):
                         measured_qubits = list(measurement.wires.labels)
                     else:
                         if isinstance(observable, (qml.PauliX, qml.PauliY, qml.PauliZ)):
-                            measured_qubits = [tuple([observable.wires.labels[0]])]
+                            measured_qubits = [(observable.wires.labels[0],)]
                         elif hasattr(observable, "operands"):
                             measured_qubits = [observable.wires.labels]
                         else:
@@ -381,9 +383,20 @@ class MQSSPennylaneDevice(Device):
 
                 final_expectation.append(expectation)
             return [final_expectation]
-        elif self.measurement_type == MeasurementType.SAMPLE:
-            raise NotImplementedError
-        elif self.measurement_type == MeasurementType.STATE:
+        elif self.measurement_type == MeasurementType.COUNTS:
+            measurement = []
+            if self.batch_circuits:
+                measurement_process = circuits[0].measurements[0]
+                num_qubits = len(circuits[0].wires)
+            else:
+                measurement_process = circuits.measurements[0]
+                num_qubits = len(circuits.wires)
+            for count in counts:
+                measurement.append(
+                    self.get_counts_dict(count, measurement_process, num_qubits)
+                )
+            return measurement
+        elif self.measurement_type == MeasurementType.SAMPLE or self.measurement_type == MeasurementType.STATE:
             raise NotImplementedError
         else:
             raise ValueError("Unknown measurement type")
@@ -413,9 +426,8 @@ class MQSSPennylaneDevice(Device):
                 weighted_count = 1
                 bitstring = int2bit(idx, num_qubits)
                 for bdx, bit in enumerate(bitstring):
-                    if bdx in measured_qubits:
-                        if bit == "1":
-                            weighted_count *= -1
+                    if bdx in measured_qubits and bit == "1":
+                        weighted_count *= -1
                 expectation += weighted_count * value
 
             except ValueError as e:
@@ -426,6 +438,23 @@ class MQSSPennylaneDevice(Device):
 
         return expectation
 
+    def get_counts_dict(self, count: TensorLike, measurement: qml.measurements.CountsMP, num_qubits: int,) -> dict[str, int]:
+        measured_wires = (list(measurement.wires.labels) if measurement.wires else list(range(num_qubits)))
+
+        outcomes: dict[str, int] = {}
+        if measurement.all_outcomes:
+            for i in range (2** len(measured_wires)):
+                outcomes[int2bit(i, len(measured_wires))] = 0
+        
+        for idx, value in enumerate(count):
+            if value == 0:
+                continue
+            bitstring = int2bit(idx, num_qubits)
+            sub_bitstring = "".join(bitstring[wire] for wire in measured_wires)
+            outcomes[sub_bitstring] = outcomes.get(sub_bitstring, 0) + int(value)
+
+        return outcomes
+    
     def append_measurement_gates(
         self, circuits: QuantumScriptOrBatch, obs: qml.ops, is_hamiltonian: bool
     ) -> QuantumScriptOrBatch:
@@ -502,7 +531,7 @@ class MQSSPennylaneDevice(Device):
             dict: The reversed bitstring.
         """
         reversed_counts = {}
-        for count in zip(counts.keys(), counts.values()):
+        for count in counts.items():
             key, value = count
             reversed_key = key[::-1]
             reversed_counts[reversed_key] = value

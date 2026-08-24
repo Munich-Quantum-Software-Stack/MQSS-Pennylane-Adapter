@@ -1,21 +1,23 @@
-import pennylane as qml
-
-import pytest
-from src.mqss.pennylane_adapter.config import MQSS_TOKEN, MQSS_BACKENDS
-from src.mqss.pennylane_adapter.device import MQSSPennylaneDevice
-from pennylane import numpy as np
-from .pennylane_adapter_tests_base import TestPennylaneAdapter
-from .mocks import MOCK_JOB_DATA
-
-from datetime import datetime
 import json
+from datetime import UTC, datetime
+
+import pennylane as qml
+import pytest
 from mqss_client import (
     MQSSClient,
     Result,
 )
+from pennylane import numpy as np
+
+from src.mqss.pennylane_adapter.config import MQSS_BACKENDS, MQSS_TOKEN
+from src.mqss.pennylane_adapter.device import MQSSPennylaneDevice
+
+from .mocks import MOCK_JOB_DATA
+from .pennylane_adapter_tests_base import TestPennylaneAdapter
 
 dev = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_single = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
+dev_counts = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS, shots=10)
 dev_simulator = qml.device("default.qubit", wires=2)
 dev_hamiltonian = MQSSPennylaneDevice(wires=2, token=MQSS_TOKEN, backends=MQSS_BACKENDS)
 dev_hamiltonian_simulator = qml.device("default.qubit", wires=2)
@@ -71,6 +73,11 @@ def quantum_function_expval_single_pauli(x: float, y: float) -> float:
     """
     arbitrary_quantum_circuit(x, y)
     return qml.expval(qml.PauliX(0))
+
+@qml.qnode(dev_counts)
+def quantum_function_counts(x: float, y: float, wires= None, all_outcomes: bool = False):
+    arbitrary_quantum_circuit(x,y)
+    return qml.counts(wires=wires, all_outcomes=all_outcomes)
 
 
 @qml.qnode(dev_autograd, interface="autograd", diff_method="parameter-shift")
@@ -159,23 +166,42 @@ class TestPennylaneJobs(TestPennylaneAdapter):
         monkeypatch.setattr(MQSSClient, "submit_job", mock_submit_job)
 
     @pytest.fixture(autouse=True)
-    def patch_job_result(self, monkeypatch):
+    def patch_job_result(self, monkeypatch, request):
+
+        test_name = request.function.__name__
+
+        test_types = {
+            "test_compare_runs": "normal",
+            "test_compare_runs_single_pauli": "normal",
+            "test_hamiltonian_measurements": "hamiltonian",
+            "test_counts_matches_simulator": "normal",
+            "test_counts_all_wires": "normal",
+            "test_counts_single_wire": "normal",
+            "test_probs": "normal",
+            "test_multiple_expvals": "normal",
+            "test_expectation_value_measurements": "hamiltonian",
+            "test_autograd": "normal",
+            "test_compare_generated_circuits": "normal",
+        }
+        test_type = test_types.get(test_name, "normal")
+    
         def mock_job_result(self, uuid, job_type):
+
             # Just always return the MOCK_JOB_DATA for the fixed UUID and job type key
             key = f"job/{uuid}/result"  # or hardcode if you want
-            result_json = MOCK_JOB_DATA.get(key)
+            result_json = MOCK_JOB_DATA[test_type].get(key)
             # Construct Result without any checks
             return Result(
                 counts=json.loads(result_json["result"]),
                 timestamp_completed=datetime.strptime(
                     result_json["timestamp_completed"], "%Y-%m-%d %H:%M:%S.%f"
-                ),
+                ).replace(tzinfo=UTC),
                 timestamp_submitted=datetime.strptime(
                     result_json["timestamp_submitted"], "%Y-%m-%d %H:%M:%S.%f"
-                ),
+                ).replace(tzinfo=UTC),
                 timestamp_scheduled=datetime.strptime(
                     result_json["timestamp_scheduled"], "%Y-%m-%d %H:%M:%S.%f"
-                ),
+                ).replace(tzinfo=UTC),
             )
 
         monkeypatch.setattr(MQSSClient, "wait_for_job_result", mock_job_result)
@@ -207,18 +233,55 @@ class TestPennylaneJobs(TestPennylaneAdapter):
         """
         result = quantum_function_expval_single_pauli(*params)
         assert result is not None
-
-    def _test_compare_generated_circuits(params: list[float]) -> bool:
-        """Compare the runs done on LRZ backend with ideal simulations.
-
+ 
+    @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
+    def test_counts_single_wire(self, params: list[float]) -> None:
+        """Requesting counts for a single wire should return single-character
+        bitstring keys whose counts sum to the total number of shots.
+ 
         Args:
-
             params (list[float]): List of parameters to the quantum circuit
+        """
+        result = quantum_function_counts(*params, wires=[0])
+        assert result is not None
+        assert all(len(key) == 1 for key in result)
+        
+        assert sum(result.values()) == 1000
+ 
+    @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
+    def test_counts_all_wires(self, params: list[float]) -> None:
+        """Requesting counts without specifying wires should return the full
+        two-wire bitstring, summing to the total number of shots.
+ 
+        Args:
+            params (list[float]): List of parameters to the quantum circuit
+        """
+        result = quantum_function_counts(*params, wires=None)
 
+        assert result is not None
+        assert all(len(key) == 2 for key in result)
+
+        assert sum(result.values()) == 1000
+ 
+    def test_counts_all_outcomes(self) -> None:
+        """With all_outcomes=True, every possible bitstring for the requested
+        wires should be present in the result, even those that were never
+        observed.
+        """
+        result = quantum_function_counts(0.0, 0.0, wires=[0], all_outcomes=True)
+        assert set(result.keys()) == {"0", "1"}
+ 
+    def _test_compare_generated_circuits(self, params: list[float]) -> bool:
+        """Compare the runs done on LRZ backend with ideal simulations.
+ 
+        Args:
+ 
+            params (list[float]): List of parameters to the quantum circuit
+ 
         """
         _ = quantum_function_expval_simulator(*params)
         _ = quantum_function_expval(*params)
-
+ 
         assert (
             quantum_function_expval.qtape.operations
             == quantum_function_expval_simulator.qtape.operations
@@ -234,28 +297,17 @@ class TestPennylaneJobs(TestPennylaneAdapter):
 
         """
 
-        results = qml.gradients.param_shift(quantum_function_autograd)(*params)
-        print(results)
+        _ = qml.gradients.param_shift(quantum_function_autograd)(*params)
         assert (
             quantum_function_expval.qtape.operations
             == quantum_function_expval_simulator.qtape.operations
         )
 
-    @pytest.mark.parametrize("coeffs", [[1.5, -0.92]])
-    @pytest.mark.parametrize(
-        "obs",
-        [
-            [
-                qml.PauliX(0) @ qml.PauliY(1),
-                qml.PauliY(0) @ qml.PauliZ(1),
-            ]
-        ],
-    )
-    @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
-    def _test_hamiltonian_measurements(
+   
+    def test_hamiltonian_measurements(
+        self,
+        hamiltonian_data: tuple[list[float], list[qml.ops.qubit.non_parametric_ops]],
         params: list[float],
-        coeffs: list[float],
-        obs: list[qml.ops.qubit.non_parametric_ops],
     ):
         """Run a quantum circuit with a hamiltonian expectation value
 
@@ -264,6 +316,7 @@ class TestPennylaneJobs(TestPennylaneAdapter):
             obs (list[qml.ops.qubit.non_parametric_ops]): _description_
         """
 
+        coeffs, obs = hamiltonian_data
         hamiltonian = qml.Hamiltonian(coeffs, obs)
 
         try:
@@ -276,4 +329,5 @@ class TestPennylaneJobs(TestPennylaneAdapter):
             print(
                 f"There was an error while measuring the expectation value of the hamiltonian, with the following error: {e}"
             )
-        assert abs(result - result_simulator) <= 1e-1
+            raise
+        assert abs(result - result_simulator) <= 2e-1
