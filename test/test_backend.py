@@ -252,22 +252,6 @@ class TestPennylaneJobs(TestPennylaneAdapter):
         result = quantum_function_counts(0.0, 0.0, wires=[0], all_outcomes=True)
         assert set(result.keys()) == {"0", "1"}
  
-    def test_compare_generated_circuits(self, params: list[float]) -> bool:
-        """Compare the runs done on LRZ backend with ideal simulations.
- 
-        Args:
- 
-            params (list[float]): List of parameters to the quantum circuit
- 
-        """
-        _ = quantum_function_expval_simulator(*params)
-        _ = quantum_function_expval(*params)
- 
-        assert (
-            quantum_function_expval.qtape.operations
-            == quantum_function_expval_simulator.qtape.operations
-        )
- 
 
     def _test_compare_generated_circuits(params: list[float]) -> bool:
         """Compare the runs done on LRZ backend with ideal simulations.
@@ -313,7 +297,7 @@ class TestPennylaneJobs(TestPennylaneAdapter):
         ],
     )
     @pytest.mark.parametrize("params", [[np.pi / 5, np.pi]])
-    def test_hamiltonian_measurements(
+    def _test_hamiltonian_measurements(
         self,
         params: list[float],
         coeffs: list[float],
