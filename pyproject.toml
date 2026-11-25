@@ -20,6 +20,13 @@ package = true
 pythonpath = ["src"]
 testpaths = ["test"]  # Specify the directory containing test files
 addopts = "--verbose" # Add verbosity to the test output
+markers = [
+    "mock: tests that run against mocked MQSS backends (run in CI)",
+    "live: tests that need an MQSS token and a live backend",
+]
+
+[tool.coverage.run]
+source = ["src"]
 
 [scripts]
 test = "pytest"
@@ -32,5 +39,6 @@ dev = [
     "mkdocstrings[python]>=0.29.0",
     "pre-commit>=4.6.2",
     "pytest>=8.3.3",
+    "pytest-cov>=6.0.0",
     "ruff>=0.16.3",
 ]
