@@ -1,41 +1,89 @@
 name: CI
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  merge_group:
+  workflow_dispatch:
 
-on: [push]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
-env:
-  PIP_EXTRA_INDEX_URL: https://pypi.org/simple
-  MQSS_TOKEN: ${{ vars.MQSS_TOKEN }}
+permissions:
+  contents: read
 
 jobs:
-  setup:
-      name: Setup Environment
-      runs-on: ubuntu-latest
-      steps:
-        - name: Checkout Repository
-          uses: actions/checkout@v4
+  lint:
+    name: 🐍 Lint
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          enable-cache: false
+      # Formatting and the remaining hooks run through pre-commit.ci (see .pre-commit-config.yaml).
+      - name: Run ruff
+        run: uv run --group dev ruff check .
 
-        - name: Install UV
-          run: curl -LsSf https://astral.sh/uv/install.sh | sh
-          shell: bash
+  python-tests-ubuntu:
+    name: 🐍 Test 🐧
+    uses: munich-quantum-toolkit/workflows/.github/workflows/reusable-python-tests.yml@4e380c0bb1774aa8b9dd53194f4a7f6575cc3d42 # v2.5.10
+    with:
+      runs-on: ubuntu-26.04
+      sessions: '["tests"]'
+      draft-sessions: '["tests-3.12"]'
+      use-sccache-gha: false
 
-        - name: Add UV to the environment
-          run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-          shell: bash
+  python-tests-macos:
+    name: 🐍 Test 🍎
+    uses: munich-quantum-toolkit/workflows/.github/workflows/reusable-python-tests.yml@4e380c0bb1774aa8b9dd53194f4a7f6575cc3d42 # v2.5.10
+    with:
+      runs-on: macos-26
+      sessions: '["tests-3.13"]'
+      draft-sessions: '["tests-3.13"]'
+      use-sccache-gha: false
 
-        - name: Install the project
-          run: uv sync --all-extras --dev
+  python-coverage:
+    name: 🐍 Coverage
+    needs:
+      - python-tests-ubuntu
+      - python-tests-macos
+    uses: munich-quantum-toolkit/workflows/.github/workflows/reusable-python-coverage.yml@4e380c0bb1774aa8b9dd53194f4a7f6575cc3d42 # v2.5.10
+    permissions:
+      contents: read
+      id-token: write
 
-        - name: Check UV installation
-          run: uv --version
-          shell: bash
+  docs:
+    name: 📝 Docs
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          enable-cache: false
+      - name: Build documentation
+        run: uv run --group dev mkdocs build
 
-        - name: List the project dependencies
-          run: uv pip list
-        - name: Install Ruff
-          run: uv pip install ruff
-
-        - name: Run Ruff Linter
-          run: uv run ruff check .
-
-        - name: Run Pytest
-          run: uv run pytest -s -m "mock" --maxfail=1 --disable-warnings
+  required-checks-pass: # This job does nothing and is only used for branch protection
+    name: 🚦 Check
+    if: always()
+    needs:
+      - lint
+      - python-tests-ubuntu
+      - python-tests-macos
+      - python-coverage
+      - docs
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Decide whether the needed jobs succeeded or failed
+        uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
+        with:
+          jobs: ${{ toJSON(needs) }}
